@@ -1,6 +1,9 @@
 <template>
   <PageWrapper :title="t('routes.portal.assetDetail')">
     <div class="space-y-6">
+      <div class="flex gap-2">
+        <a-button type="primary" @click="goRelatedDevices">查看关联设备列表</a-button>
+      </div>
       <a-card :title="t('routes.portal.assets')">
         <a-descriptions :column="2" bordered>
           <a-descriptions-item v-for="key in groupOrder('basic')" :key="key" :label="alias(key)">
@@ -131,5 +134,12 @@
   function openMap(lon?: any, lat?: any) {
     if (!lon || !lat) return;
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'ASSET' } });
+  }
+
+  function goRelatedDevices() {
+    const id = detail.value?.entityId?.id;
+    if (id) {
+      router.push({ path: '/portal/devices', query: { rootType: 'ASSET', rootId: id, direction: 'FROM', relationType: 'Contains' } });
+    }
   }
 </script>

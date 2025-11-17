@@ -12,7 +12,6 @@ const portalDevicesTop: AppRouteModule = {
     icon: 'i-ant-design:database-outlined',
     orderNo: 5,
     single: true,
-    hideMenu: true,
     authority: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
   },
   children: [

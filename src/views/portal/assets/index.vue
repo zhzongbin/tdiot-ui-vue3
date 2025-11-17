@@ -19,7 +19,7 @@
   };
 </script>
 <script lang="ts" setup>
-  import { reactive } from 'vue';
+  import { reactive, computed } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
@@ -51,6 +51,15 @@
         icon: 'ant-design:eye-outlined',
         title: t('routes.portal.assetDetail'),
         onClick: () => router.push(`/portal/assets/${record.entityId.id}`),
+      },
+      {
+        icon: 'ant-design:database-outlined',
+        title: t('routes.portal.devices'),
+        onClick: () =>
+          router.push({
+            path: '/portal/devices',
+            query: { rootType: 'ASSET', rootId: record.entityId.id, direction: 'FROM', relationType: 'Contains' },
+          }),
       },
     ],
   };
@@ -111,6 +120,11 @@
     return { ...page, data: mapped };
   }
 
+  const hasRelationFilter = computed(() => {
+    const q = router.currentRoute.value.query as any;
+    return !!(q && q.rootType && q.rootId && q.direction);
+  });
+
   function buildFilterFromQueryOrDefault() {
     const q = router.currentRoute.value.query as any;
     if (q && q.rootType && q.rootId && q.direction) {
@@ -144,5 +158,12 @@
       entity[k] = get('SERVER_ATTRIBUTE', k);
     });
     return entity;
+  }
+
+  function clearRelationFilter() {
+    if (hasRelationFilter.value) {
+      router.replace({ path: '/portal/assets', query: {} });
+      reload();
+    }
   }
 </script>

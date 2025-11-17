@@ -19,7 +19,7 @@
   };
 </script>
 <script lang="ts" setup>
-  import { reactive } from 'vue';
+  import { reactive, computed } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
@@ -50,6 +50,15 @@
         icon: 'ant-design:eye-outlined',
         title: t('routes.portal.deviceDetail'),
         onClick: () => router.push(`/portal/devices/${record.entityId.id}`),
+      },
+      {
+        icon: 'ant-design:deployment-unit-outlined',
+        title: t('routes.portal.assets'),
+        onClick: () =>
+          router.push({
+            path: '/portal/assets',
+            query: { rootType: 'DEVICE', rootId: record.entityId.id, direction: 'TO', relationType: 'Contains' },
+          }),
       },
     ],
   };
@@ -86,9 +95,33 @@
     return cols;
   }
 
+  const hasRelationFilter = computed(() => {
+    const q = router.currentRoute.value.query as any;
+    return !!(q && q.rootType && q.rootId && q.direction);
+  });
+
+  function buildFilterFromQueryOrDefault() {
+    const q = router.currentRoute.value.query as any;
+    if (q && q.rootType && q.rootId && q.direction) {
+      return {
+        type: 'relationsQuery',
+        parameters: {
+          rootId: q.rootId,
+          rootType: q.rootType,
+          direction: q.direction,
+          relationTypeGroup: 'COMMON',
+          maxLevel: 1,
+          fetchLastLevelOnly: true,
+        },
+        filters: [{ relationType: q.relationType || 'Contains', entityTypes: [EntityType.DEVICE], negate: false }],
+      };
+    }
+    return { type: 'entityType', entityType: EntityType.DEVICE };
+  }
+
   async function fetchDevices(param: any) {
     const query = {
-      entityFilter: { type: 'entityType', entityType: EntityType.DEVICE },
+      entityFilter: buildFilterFromQueryOrDefault(),
       entityFields: [
         { type: 'ENTITY_FIELD', key: 'name' },
         { type: 'ENTITY_FIELD', key: 'type' },
@@ -128,5 +161,12 @@
       entity[k] = get('SERVER_ATTRIBUTE', k);
     });
     return entity;
+  }
+
+  function clearRelationFilter() {
+    if (hasRelationFilter.value) {
+      router.replace({ path: '/portal/devices', query: {} });
+      reload();
+    }
   }
 </script>
