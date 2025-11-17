@@ -4,7 +4,7 @@
       <Icon :icon="getTitle.icon" class="pr-1 m-1" />
       <span> {{ getTitle.value }} </span>
       <Steps size="small" v-model:current="currentStep" style="margin-top: 12px">
-  <Steps.Step :title="t('tb.notification.rule.form.stepBasic')" />
+        <Steps.Step :title="t('tb.notification.rule.form.stepBasic')" />
         <Steps.Step
           :title="NOTIFICATION_TYPE_OPTIONS.find((item) => item.value == triggerType)?.label || triggerType"
         />
@@ -12,7 +12,7 @@
     </template>
     <BasicForm @register="registerForm" v-show="currentStep == 0">
       <template #templateId="{ model, field }">
-  <Select v-model:value="model[field]" :placeholder="t('tb.notification.rule.form.notificationTemplate')">
+        <Select v-model:value="model[field]" :placeholder="t('tb.notification.rule.form.notificationTemplate')">
           <Select.Option v-for="(option, index) in templateOptions" :key="index" :value="option.value">
             {{ option.label }}
             <Tag v-for="(method, index) in option.deliveryMethods" :key="index">
@@ -128,7 +128,7 @@
   const record = ref<NotificationRule>({} as NotificationRule);
   const getTitle = computed(() => ({
     icon: meta.icon || 'ant-design:book-outlined',
-  value: record.value.id?.id ? t('tb.notification.rule.action.edit') : t('tb.notification.rule.action.add'),
+    value: record.value.id?.id ? t('tb.notification.rule.action.edit') : t('tb.notification.rule.action.add'),
   }));
   const tenantId = userStore.getUserInfo?.tenantId || { EntityType: 'TENANT', id: '' };
 
@@ -223,7 +223,7 @@
       field: 'templateId.id',
       component: 'Select',
       componentProps: {
-  placeholder: t('tb.notification.rule.form.notificationTemplate'),
+        placeholder: t('tb.notification.rule.form.notificationTemplate'),
       },
       slot: 'templateId',
       required: true,
@@ -241,14 +241,14 @@
       component: 'Select',
       componentProps: {
         mode: 'multiple',
-  placeholder: t('tb.notification.rule.form.recipientsGroup'),
+        placeholder: t('tb.notification.rule.form.recipientsGroup'),
         options: recipientOptions,
       },
       required: true,
       colProps: { lg: 24, md: 24 },
     },
     {
-  label: t('tb.notification.rule.form.recipientsChain'),
+      label: t('tb.notification.rule.form.recipientsChain'),
       field: 'recipientsConfig.escalationTable',
       component: 'Select',
       colSlot: 'escalationTable',

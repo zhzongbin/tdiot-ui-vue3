@@ -4,17 +4,33 @@
       <div class="general-setting">
         <div class="text-lg font-bold my-4">{{ t('tb.setting.mail.title') }}</div>
         <Form ref="formRef" :model="formState" layout="vertical">
-          <Form.Item :label="t('tb.setting.mail.mailFrom')" :name="['jsonValue', 'mailFrom']" :rules="[{ required: true }]">
+          <Form.Item
+            :label="t('tb.setting.mail.mailFrom')"
+            :name="['jsonValue', 'mailFrom']"
+            :rules="[{ required: true }]"
+          >
             <Input v-model:value="formState.jsonValue.mailFrom" />
           </Form.Item>
-          <Form.Item :label="t('tb.setting.mail.smtpProvider')" :name="['jsonValue', 'providerId']" :rules="[{ required: true }]">
+          <Form.Item
+            :label="t('tb.setting.mail.smtpProvider')"
+            :name="['jsonValue', 'providerId']"
+            :rules="[{ required: true }]"
+          >
             <Input v-model:value="formState.jsonValue.providerId" :disabled="true" />
           </Form.Item>
-          <CollapseContainer :title="t('tb.setting.mail.connectionSettings')" :canExpan="false" class="border border-solid border-neutral-300 mb-4">
+          <CollapseContainer
+            :title="t('tb.setting.mail.connectionSettings')"
+            :canExpan="false"
+            class="border border-solid border-neutral-300 mb-4"
+          >
             <div class="px-4">
               <Row :gutter="24">
                 <Col :span="24">
-                  <Form.Item :label="t('tb.setting.mail.smtpProtocol')" :name="['jsonValue', 'smtpProtocol']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.smtpProtocol')"
+                    :name="['jsonValue', 'smtpProtocol']"
+                    :rules="[{ required: true }]"
+                  >
                     <Select v-model:value="formState.jsonValue.smtpProtocol">
                       <Select.Option value="smtp">SMTP</Select.Option>
                       <Select.Option value="smtps">SMTPS</Select.Option>
@@ -22,12 +38,20 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.mail.smtpHost')" :name="['jsonValue', 'smtpHost']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.smtpHost')"
+                    :name="['jsonValue', 'smtpHost']"
+                    :rules="[{ required: true }]"
+                  >
                     <Input v-model:value="formState.jsonValue.smtpHost" />
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.mail.smtpPort')" :name="['jsonValue', 'smtpPort']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.smtpPort')"
+                    :name="['jsonValue', 'smtpPort']"
+                    :rules="[{ required: true }]"
+                  >
                     <InputNumber
                       v-model:value="formState.jsonValue.smtpPort"
                       :min="1"
@@ -37,7 +61,11 @@
                   </Form.Item>
                 </Col>
                 <Col :span="24">
-                  <Form.Item :label="t('tb.setting.mail.timeout')" :name="['jsonValue', 'timeout']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.timeout')"
+                    :name="['jsonValue', 'timeout']"
+                    :rules="[{ required: true }]"
+                  >
                     <InputNumber
                       v-model:value="formState.jsonValue.timeout"
                       :min="0"
@@ -69,12 +97,20 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12" v-if="formState.jsonValue.enableProxy == true">
-                  <Form.Item :label="t('tb.setting.mail.proxyHost')" :name="['jsonValue', 'proxyHost']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.proxyHost')"
+                    :name="['jsonValue', 'proxyHost']"
+                    :rules="[{ required: true }]"
+                  >
                     <Input v-model:value="formState.jsonValue.proxyHost" />
                   </Form.Item>
                 </Col>
                 <Col :span="12" v-if="formState.jsonValue.enableProxy == true">
-                  <Form.Item :label="t('tb.setting.mail.proxyPort')" :name="['jsonValue', 'proxyPort']" :rules="[{ required: true }]">
+                  <Form.Item
+                    :label="t('tb.setting.mail.proxyPort')"
+                    :name="['jsonValue', 'proxyPort']"
+                    :rules="[{ required: true }]"
+                  >
                     <InputNumber
                       v-model:value="formState.jsonValue.proxyPort"
                       :min="1"
@@ -96,7 +132,11 @@
               </Row>
             </div>
           </CollapseContainer>
-          <CollapseContainer :title="t('tb.setting.mail.authentication')" :canExpan="false" class="border border-solid border-neutral-300 mb-4">
+          <CollapseContainer
+            :title="t('tb.setting.mail.authentication')"
+            :canExpan="false"
+            class="border border-solid border-neutral-300 mb-4"
+          >
             <div class="px-4">
               <Form.Item :label="t('tb.setting.mail.username')" :name="['jsonValue', 'username']">
                 <Input v-model:value="formState.jsonValue.username" />
@@ -138,7 +178,7 @@
   import { Space, Spin, Row, Col, Switch, Input, Form, Select, InputNumber, InputPassword } from 'ant-design-vue';
   import { ScrollContainer } from '/@/components/Container/index';
   import { useWindowSizeFn } from '/@/hooks/event/useWindowSizeFn';
-import { EntityType } from '/@/enums/entityTypeEnum';
+  import { EntityType } from '/@/enums/entityTypeEnum';
 
   const { t } = useI18n('tb');
   const { showMessage } = useMessage();

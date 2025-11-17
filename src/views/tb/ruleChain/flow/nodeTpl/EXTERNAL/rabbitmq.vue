@@ -14,7 +14,7 @@
       <Col :span="24">
         <Form.Item :label="t('tb.ruleChain.nodeAction.messageProperties')" name="messageProperties">
           <Select v-model:value="formState.messageProperties">
-            <Select.Option :value="null"> </Select.Option>
+            <Select.Option :value="null" />
             <Select.Option value="BASIC">BASIC</Select.Option>
             <Select.Option value="TEXT_PLAIN">TEXT_PLAIN</Select.Option>
             <Select.Option value="MINIMAL_BASIC">MINIMAL_BASIC</Select.Option>

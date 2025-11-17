@@ -1,4 +1,3 @@
-
 <script lang="tsx">
   import type { PropType, Ref } from 'vue';
   import type { FormActionType, FormProps } from '../types/form';

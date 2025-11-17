@@ -81,28 +81,28 @@
           name="clientAttributeNames"
           :rules="[{ validator: validatorAttributeNames }]"
         >
-          <Select v-model:value="formState.clientAttributeNames" mode="tags"> </Select>
+          <Select v-model:value="formState.clientAttributeNames" mode="tags" />
         </Form.Item>
         <Form.Item
           :label="t('tb.ruleChain.nodeAction.sharedAttributes')"
           name="sharedAttributeNames"
           :rules="[{ validator: validatorAttributeNames }]"
         >
-          <Select v-model:value="formState.sharedAttributeNames" mode="tags"> </Select>
+          <Select v-model:value="formState.sharedAttributeNames" mode="tags" />
         </Form.Item>
         <Form.Item
           :label="t('tb.ruleChain.nodeAction.serverAttributes')"
           name="serverAttributeNames"
           :rules="[{ validator: validatorAttributeNames }]"
         >
-          <Select v-model:value="formState.serverAttributeNames" mode="tags"> </Select>
+          <Select v-model:value="formState.serverAttributeNames" mode="tags" />
         </Form.Item>
         <Form.Item
           :label="t('tb.ruleChain.nodeAction.telemetry')"
           name="latestTsKeyNames"
           :rules="[{ validator: validatorAttributeNames }]"
         >
-          <Select v-model:value="formState.latestTsKeyNames" mode="tags"> </Select>
+          <Select v-model:value="formState.latestTsKeyNames" mode="tags" />
         </Form.Item>
         <Form.Item name="getLatestValueWithTs" v-show="formState.latestTsKeyNames.length > 0">
           <Checkbox v-model:checked="formState.getLatestValueWithTs">

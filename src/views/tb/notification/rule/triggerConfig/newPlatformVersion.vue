@@ -17,7 +17,7 @@
       show: false,
     },
     {
-  label: t('tb.notification.ruleTrigger.description'),
+      label: t('tb.notification.ruleTrigger.description'),
       field: 'additionalConfig.description',
       component: 'InputTextArea',
       componentProps: {

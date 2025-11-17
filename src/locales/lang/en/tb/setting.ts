@@ -21,7 +21,8 @@ export default {
     baseUrl: 'Base URL',
     baseUrlRequired: 'Please input base URL!',
     baseUrlPlaceholder: 'Please input base URL',
-    prohibitDifferentUrlHelp: 'This setting should be enabled for production environments. Disabling it may cause security issues.',
+    prohibitDifferentUrlHelp:
+      'This setting should be enabled for production environments. Disabling it may cause security issues.',
     prohibitDifferentUrl: 'Prohibit the use of hostname from client request headers',
     saveSuccess: 'General settings saved successfully!',
   },

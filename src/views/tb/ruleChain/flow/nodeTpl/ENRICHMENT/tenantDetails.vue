@@ -1,6 +1,10 @@
 <template>
   <Form ref="formRef" :model="formState" layout="vertical">
-    <Form.Item :label="t('tb.ruleChain.nodeAction.selectDetails')" name="detailsList" :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.selectDetailsRequired') }]">
+    <Form.Item
+      :label="t('tb.ruleChain.nodeAction.selectDetails')"
+      name="detailsList"
+      :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.selectDetailsRequired') }]"
+    >
       <Select v-model:value="formState.detailsList" :options="detailsOptions" mode="multiple" />
     </Form.Item>
 

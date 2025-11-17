@@ -1,7 +1,7 @@
 <template>
   <Form ref="formRef" :model="formState" layout="vertical">
     <Form.Item name="version" v-show="false">
-      <Input v-model:value="formState.version"> </Input>
+      <Input v-model:value="formState.version" />
     </Form.Item>
   </Form>
 </template>

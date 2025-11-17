@@ -1,4 +1,3 @@
-
 <template>
   <Form
     v-bind="getBindValue"

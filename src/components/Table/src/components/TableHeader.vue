@@ -1,4 +1,3 @@
-
 <template>
   <div style="width: 100%">
     <div v-if="$slots.headerTop" style="margin: 5px">

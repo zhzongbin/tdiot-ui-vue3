@@ -1,4 +1,3 @@
-
 <template>
   <Tooltip placement="topRight">
     <template #title>

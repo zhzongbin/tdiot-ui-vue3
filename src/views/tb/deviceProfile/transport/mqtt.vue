@@ -1,6 +1,6 @@
 <template>
   <div class="mqtt-transport-form">
-  <p class="text-xs text-neutral-500">{{ t('tb.deviceProfile.mqtt.enableAdvanced') }}</p>
+    <p class="text-xs text-neutral-500">{{ t('tb.deviceProfile.mqtt.enableAdvanced') }}</p>
     <Form ref="formRef" :model="formState" layout="vertical">
       <Form.Item name="type" :hidden="true">
         <Input v-model:value="formState.type" />
@@ -30,17 +30,29 @@
       >
         <Row :gutter="4">
           <Col :span="8">
-            <Form.Item :label="t('tb.deviceProfile.mqtt.telemetryTopic')" name="deviceTelemetryTopic" :rules="[{ required: true }]">
+            <Form.Item
+              :label="t('tb.deviceProfile.mqtt.telemetryTopic')"
+              name="deviceTelemetryTopic"
+              :rules="[{ required: true }]"
+            >
               <Input v-model:value="formState.deviceTelemetryTopic" size="large" />
             </Form.Item>
           </Col>
           <Col :span="8">
-            <Form.Item :label="t('tb.deviceProfile.mqtt.attributesTopic')" name="deviceAttributesTopic" :rules="[{ required: true }]">
+            <Form.Item
+              :label="t('tb.deviceProfile.mqtt.attributesTopic')"
+              name="deviceAttributesTopic"
+              :rules="[{ required: true }]"
+            >
               <Input v-model:value="formState.deviceAttributesTopic" size="large" />
             </Form.Item>
           </Col>
           <Col :span="8">
-            <Form.Item :label="t('tb.deviceProfile.mqtt.attributesSubscribeTopic')" name="deviceAttributesSubscribeTopic" :rules="[{ required: true }]">
+            <Form.Item
+              :label="t('tb.deviceProfile.mqtt.attributesSubscribeTopic')"
+              name="deviceAttributesSubscribeTopic"
+              :rules="[{ required: true }]"
+            >
               <Input v-model:value="formState.deviceAttributesSubscribeTopic" size="large" />
             </Form.Item>
           </Col>

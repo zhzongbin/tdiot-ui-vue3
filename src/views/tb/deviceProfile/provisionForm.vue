@@ -1,22 +1,22 @@
 <template>
   <div class="device-profile-provision-form">
     <BasicForm @register="registerForm">
-    <template #provisionDeviceKey="{ model, field }">
-    <Input
-      v-model:value="model[field]"
-      :placeholder="t('tb.deviceProfile.provision.deviceKeyNamePlaceholder')"
-      style="width: 90%"
-    >
+      <template #provisionDeviceKey="{ model, field }">
+        <Input
+          v-model:value="model[field]"
+          :placeholder="t('tb.deviceProfile.provision.deviceKeyNamePlaceholder')"
+          style="width: 90%"
+        >
           <template #suffix>
-      <Tooltip :title="t('tb.deviceProfile.common.copy')" v-if="!isEmpty(model[field])">
+            <Tooltip :title="t('tb.deviceProfile.common.copy')" v-if="!isEmpty(model[field])">
               <Icon
                 :icon="'ant-design:copy-outlined'"
                 :size="18"
                 class="cursor-pointer"
-        @click="copyToClipboard(model[field], t('tb.deviceProfile.provision.copyDeviceKeyNameSuccess'))"
+                @click="copyToClipboard(model[field], t('tb.deviceProfile.provision.copyDeviceKeyNameSuccess'))"
               />
             </Tooltip>
-      <Tooltip :title="t('tb.deviceProfile.common.generate')">
+            <Tooltip :title="t('tb.deviceProfile.common.generate')">
               <Icon
                 :icon="'ant-design:reload-outlined'"
                 :size="18"
@@ -28,17 +28,17 @@
         </Input>
       </template>
       <template #provisionDeviceSecret="{ model, field }">
-    <Input v-model:value="model[field]" :placeholder="t('tb.deviceProfile.provision.deviceKeyPlaceholder')">
+        <Input v-model:value="model[field]" :placeholder="t('tb.deviceProfile.provision.deviceKeyPlaceholder')">
           <template #suffix>
-      <Tooltip :title="t('tb.deviceProfile.common.copy')" v-if="!isEmpty(model[field])">
+            <Tooltip :title="t('tb.deviceProfile.common.copy')" v-if="!isEmpty(model[field])">
               <Icon
                 :icon="'ant-design:copy-outlined'"
                 :size="18"
                 class="cursor-pointer"
-        @click="copyToClipboard(model[field], t('tb.deviceProfile.provision.copyDeviceKeySuccess'))"
+                @click="copyToClipboard(model[field], t('tb.deviceProfile.provision.copyDeviceKeySuccess'))"
               />
             </Tooltip>
-      <Tooltip :title="t('tb.deviceProfile.common.generate')">
+            <Tooltip :title="t('tb.deviceProfile.common.generate')">
               <Icon
                 :icon="'ant-design:reload-outlined'"
                 :size="18"
@@ -51,8 +51,8 @@
       </template>
       <template #allowCreateNewDevicesByX509Certificate="{ model, field }">
         <Checkbox v-model:checked="model[field]" />
-    <span class="ml-2">{{ t('tb.deviceProfile.provision.createNewDevices') }}</span>
-    <p class="text-help">{{ t('tb.deviceProfile.provision.createNewDevicesHelp') }}</p>
+        <span class="ml-2">{{ t('tb.deviceProfile.provision.createNewDevices') }}</span>
+        <p class="text-help">{{ t('tb.deviceProfile.provision.createNewDevicesHelp') }}</p>
       </template>
     </BasicForm>
   </div>

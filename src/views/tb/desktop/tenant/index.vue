@@ -14,7 +14,7 @@
           </Col>
           <Col span="6">
             <CustomerCountCard />
-          </Col>    
+          </Col>
           <Col span="24">
             <Card :tab-list="tabListTitle" :active-tab-key="activeKey" @tabChange="onTabChange">
               <p v-if="activeKey === 'tab1'">

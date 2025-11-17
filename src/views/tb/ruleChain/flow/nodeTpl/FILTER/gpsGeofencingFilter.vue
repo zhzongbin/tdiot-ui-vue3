@@ -10,7 +10,7 @@
               name="latitudeKeyName"
               :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.latitudeKeyNameRequired') }]"
             >
-              <Input v-model:value="formState.latitudeKeyName"> </Input>
+              <Input v-model:value="formState.latitudeKeyName" />
             </Form.Item>
           </Col>
           <Col :span="12">
@@ -101,8 +101,7 @@
               name="rangeUnit"
               :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.rangeUnitRequired') }]"
             >
-              <Select v-model:value="formState.rangeUnit" :default-value="'METER'" :options="rangeUnitOptions">
-              </Select>
+              <Select v-model:value="formState.rangeUnit" :default-value="'METER'" :options="rangeUnitOptions" />
             </Form.Item>
           </Col>
         </Row>

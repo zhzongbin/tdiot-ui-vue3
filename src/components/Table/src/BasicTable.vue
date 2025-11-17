@@ -1,4 +1,3 @@
-
 <template>
   <div ref="wrapRef" :class="getWrapperClass">
     <TableHeader v-bind="getHeaderProps" :showSelectionBar="false">

@@ -1,6 +1,10 @@
 <template>
   <Form ref="formRef" :model="formState" layout="vertical">
-    <Form.Item :label="t('tb.ruleChain.nodeAction.messageType')" name="messageTypes" :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.messageTypeRequired') }]">
+    <Form.Item
+      :label="t('tb.ruleChain.nodeAction.messageType')"
+      name="messageTypes"
+      :rules="[{ required: true, message: t('tb.ruleChain.nodeAction.messageTypeRequired') }]"
+    >
       <Select v-model:value="formState.messageTypes" :options="messageTypeOptions" mode="multiple" />
     </Form.Item>
   </Form>

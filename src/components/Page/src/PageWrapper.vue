@@ -1,4 +1,3 @@
-
 <template>
   <div :class="getClass" ref="wrapperRef">
     <PageHeader ref="headerRef" v-if="getShowHeader" v-bind="omit($attrs, 'class')" :ghost="ghost" :title="title">

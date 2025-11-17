@@ -134,7 +134,7 @@
   import { useWindowSizeFn } from '/@/hooks/event/useWindowSizeFn';
   import { isEmpty } from '/@/utils/is';
   import ImageUrlInput from '/@/views/tb/images/ImageUrlInput.vue';
-import { EntityType } from '/@/enums/entityTypeEnum';
+  import { EntityType } from '/@/enums/entityTypeEnum';
 
   const emit = defineEmits(['success', 'register']);
 

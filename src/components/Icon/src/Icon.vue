@@ -1,4 +1,3 @@
-
 <template>
   <img
     v-if="isImgIcon"

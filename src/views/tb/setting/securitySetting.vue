@@ -5,12 +5,19 @@
         <div class="text-lg font-bold my-4">{{ t('tb.setting.security.title') }}</div>
 
         <Form ref="formRef" :model="formState" layout="vertical">
-          <CollapseContainer :title="t('tb.setting.security.basicPolicy')" :canExpan="false" class="border border-solid border-neutral-300 mb-4">
+          <CollapseContainer
+            :title="t('tb.setting.security.basicPolicy')"
+            :canExpan="false"
+            class="border border-solid border-neutral-300 mb-4"
+          >
             <div class="px-4">
               <Form.Item :label="t('tb.setting.security.maxFailedLoginAttempts')" name="maxFailedLoginAttempts">
                 <InputNumber v-model:value="formState.maxFailedLoginAttempts" :min="0" style="width: calc(50%)" />
               </Form.Item>
-              <Form.Item :label="t('tb.setting.security.userLockoutNotificationEmail')" name="userLockoutNotificationEmail">
+              <Form.Item
+                :label="t('tb.setting.security.userLockoutNotificationEmail')"
+                name="userLockoutNotificationEmail"
+              >
                 <Input v-model:value="formState.userLockoutNotificationEmail" />
               </Form.Item>
               <Form.Item
@@ -37,12 +44,20 @@
                   style="width: calc(50%)"
                 />
               </Form.Item>
-              <Form.Item :label="t('tb.setting.security.mobileSecretKeyLength')" name="mobileSecretKeyLength" :rules="[{ required: true }]">
+              <Form.Item
+                :label="t('tb.setting.security.mobileSecretKeyLength')"
+                name="mobileSecretKeyLength"
+                :rules="[{ required: true }]"
+              >
                 <InputNumber v-model:value="formState.mobileSecretKeyLength" :min="1" style="width: calc(50%)" />
               </Form.Item>
             </div>
           </CollapseContainer>
-          <CollapseContainer :title="t('tb.setting.security.passwordPolicy')" :canExpan="false" class="border border-solid border-neutral-300 mb-4">
+          <CollapseContainer
+            :title="t('tb.setting.security.passwordPolicy')"
+            :canExpan="false"
+            class="border border-solid border-neutral-300 mb-4"
+          >
             <div class="px-4">
               <Row :gutter="24">
                 <Col :span="12">
@@ -72,7 +87,10 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.security.minimumUppercaseLetters')" :name="['passwordPolicy', 'minimumUppercaseLetters']">
+                  <Form.Item
+                    :label="t('tb.setting.security.minimumUppercaseLetters')"
+                    :name="['passwordPolicy', 'minimumUppercaseLetters']"
+                  >
                     <InputNumber
                       v-model:value="formState.passwordPolicy.minimumUppercaseLetters"
                       :min="0"
@@ -81,7 +99,10 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.security.minimumLowercaseLetters')" :name="['passwordPolicy', 'minimumLowercaseLetters']">
+                  <Form.Item
+                    :label="t('tb.setting.security.minimumLowercaseLetters')"
+                    :name="['passwordPolicy', 'minimumLowercaseLetters']"
+                  >
                     <InputNumber
                       v-model:value="formState.passwordPolicy.minimumLowercaseLetters"
                       :min="0"
@@ -90,7 +111,10 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.security.minimumDigits')" :name="['passwordPolicy', 'minimumDigits']">
+                  <Form.Item
+                    :label="t('tb.setting.security.minimumDigits')"
+                    :name="['passwordPolicy', 'minimumDigits']"
+                  >
                     <InputNumber
                       v-model:value="formState.passwordPolicy.minimumDigits"
                       :min="0"
@@ -99,7 +123,10 @@
                   </Form.Item>
                 </Col>
                 <Col :span="12">
-                  <Form.Item :label="t('tb.setting.security.minimumSpecialCharacters')" :name="['passwordPolicy', 'minimumSpecialCharacters']">
+                  <Form.Item
+                    :label="t('tb.setting.security.minimumSpecialCharacters')"
+                    :name="['passwordPolicy', 'minimumSpecialCharacters']"
+                  >
                     <InputNumber
                       v-model:value="formState.passwordPolicy.minimumSpecialCharacters"
                       :min="0"
@@ -109,7 +136,9 @@
                 </Col>
                 <Col :span="12">
                   <Form.Item :name="['passwordPolicy', 'allowWhitespaces']">
-                    <Checkbox v-model:checked="formState.passwordPolicy.allowWhitespaces"> {{ t('tb.setting.security.allowWhitespaces') }} </Checkbox>
+                    <Checkbox v-model:checked="formState.passwordPolicy.allowWhitespaces">
+                      {{ t('tb.setting.security.allowWhitespaces') }}
+                    </Checkbox>
                   </Form.Item>
                 </Col>
                 <Col :span="12">

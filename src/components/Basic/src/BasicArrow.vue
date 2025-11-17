@@ -1,4 +1,3 @@
-
 <template>
   <span :class="getClass" @click="handleClick" @dblclick="handleDblClick">
     <Spin v-if="props.loading" size="small" :style="$attrs.iconStyle" />

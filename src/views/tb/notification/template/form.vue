@@ -104,9 +104,7 @@
   const record = ref<NotificationTemplate>({} as NotificationTemplate);
   const getTitle = computed(() => ({
     icon: meta.icon || 'ant-design:book-outlined',
-    value: record.value.id?.id
-      ? t('tb.notification.template.action.edit')
-      : t('tb.notification.template.action.add'),
+    value: record.value.id?.id ? t('tb.notification.template.action.edit') : t('tb.notification.template.action.add'),
   }));
 
   const tenantId = userStore.getUserInfo?.tenantId || { EntityType: 'TENANT', id: '' };
@@ -129,7 +127,7 @@
       .map((method) => {
         return { title: method };
       });
-  items.unshift({ title: t('tb.notification.template.form.stepBasic') });
+    items.unshift({ title: t('tb.notification.template.form.stepBasic') });
     if (items.length - 1 < currentStep.value) {
       currentStep.value = items.length - 1;
     }
@@ -168,7 +166,7 @@
   const inputFormSchemas: FormSchema[] = [
     { field: 'tenantId', component: 'Input', defaultValue: tenantId, show: false },
     {
-  label: t('tb.notification.template.form.name'),
+      label: t('tb.notification.template.form.name'),
       field: 'name',
       component: 'Input',
       componentProps: {
@@ -178,7 +176,7 @@
       colProps: { lg: 24, md: 24 },
     },
     {
-  label: t('tb.notification.template.form.notificationType'),
+      label: t('tb.notification.template.form.notificationType'),
       field: 'notificationType',
       component: 'Select',
       defaultValue: NotificationType.GENERAL,
@@ -190,8 +188,8 @@
       colProps: { lg: 24, md: 24 },
     },
     {
-  label: t('tb.notification.template.form.deliveryMethods'),
-  subLabel: t('tb.notification.template.form.atLeastOne'),
+      label: t('tb.notification.template.form.deliveryMethods'),
+      subLabel: t('tb.notification.template.form.atLeastOne'),
       field: 'deliveryMethods',
       component: 'Input',
       slot: 'deliveryMethods',
