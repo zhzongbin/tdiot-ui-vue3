@@ -56,6 +56,18 @@
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
+
+      <a-card title="关联设备">
+        <BasicTable @register="registerRelatedTable">
+          <template #tableTitle>
+            <div class="space-x-2">
+              <a-button type="primary" @click="exportRelatedDevices">
+                <Icon icon="ant-design:file-excel-outlined" /> 导出
+              </a-button>
+            </div>
+          </template>
+        </BasicTable>
+      </a-card>
     </div>
   </PageWrapper>
 </template>
@@ -74,6 +86,9 @@
   import { useTabs } from '/@/hooks/web/useTabs';
   import dayjs from 'dayjs';
   import { ASSET_FIELDS } from '/@/views/portal/config/attributes';
+  import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
+  import { Icon } from '/@/components/Icon';
+  import { jsonToSheetXlsx } from '/@/components/Excel/src/Export2Excel';
 
   const { t } = useI18n();
   const detail = ref<any>({});
@@ -105,6 +120,8 @@
     if (name) {
       await setTitle(name);
     }
+
+    await reloadRelated();
   });
 
   function mapEntityRow(row: any) {
@@ -147,5 +164,94 @@
     if (id) {
       router.push({ path: '/portal/devices', query: { rootType: 'ASSET', rootId: id, direction: 'FROM', relationType: 'Contains' } });
     }
+  }
+
+  const relatedColumns: BasicColumn[] = [
+    { title: '名称', dataIndex: 'name', key: 'name', align: 'left' },
+    { title: '设备编号', dataIndex: 'DeviceNo', key: 'DeviceNo', align: 'left' },
+    { title: 'MQTT客户端ID', dataIndex: 'MQTT_CLIENT_ID', key: 'MQTT_CLIENT_ID', align: 'left' },
+    { title: '设备名称', dataIndex: 'DeviceName', key: 'DeviceName', align: 'left' },
+    { title: '经度', dataIndex: 'Longitude', key: 'Longitude', align: 'left' },
+    { title: '纬度', dataIndex: 'Latitude', key: 'Latitude', align: 'left' },
+  ];
+
+  const relatedActionColumn: BasicColumn = {
+    width: 160,
+    actions: (record: any) => [
+      {
+        icon: 'ant-design:eye-outlined',
+        title: '查看详情',
+        onClick: () => router.push(`/portal/devices/${record.entityId.id}`),
+      },
+    ],
+  };
+
+  const [registerRelatedTable, { reload: reloadRelated, getDataSource }] = useTable({
+    rowKey: (record) => record.entityId?.id,
+    api: fetchRelatedDevices,
+    columns: relatedColumns,
+    actionColumn: relatedActionColumn,
+    showTableSetting: true,
+    useSearchForm: false,
+    canResize: true,
+    clickToRowSelect: false,
+    defSort: { sortProperty: 'createdTime', sortOrder: 'DESC' },
+  });
+
+  async function fetchRelatedDevices(param: any) {
+    const assetId = router.currentRoute.value.params.assetId as string;
+    const serverAttrKeys = ['DeviceNo', 'MQTT_CLIENT_ID', 'DeviceName', 'Longitude', 'Latitude'];
+    const query = {
+      entityFilter: {
+        type: 'relationsQuery',
+        rootEntity: { id: assetId, entityType: EntityType.ASSET },
+        direction: 'FROM',
+        maxLevel: 1,
+        fetchLastLevelOnly: true,
+        filters: [{ relationType: 'Contains', entityTypes: [EntityType.DEVICE], negate: false }],
+      },
+      entityFields: [
+        { type: 'ENTITY_FIELD', key: 'name' },
+        { type: 'ENTITY_FIELD', key: 'type' },
+        { type: 'ENTITY_FIELD', key: 'label' },
+        { type: 'ENTITY_FIELD', key: 'createdTime' },
+      ],
+      pageLink: {
+        page: param.page,
+        pageSize: param.pageSize,
+        textSearch: null,
+        sortOrder: { direction: param.sortOrder || 'DESC', key: { type: 'ENTITY_FIELD', key: param.sortProperty || 'createdTime' } },
+      },
+      latestValues: [
+        ...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k })),
+      ],
+    };
+    const page = await findEntityDataByQuery(query);
+    const mapped = page.data.map((row: any) => mapDeviceRow(row));
+    return { ...page, data: mapped };
+  }
+
+  function mapDeviceRow(row: any) {
+    const latest = row.latest || {};
+    const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+    const entity: any = {
+      entityId: row.entityId,
+      name: get('ENTITY_FIELD', 'name'),
+      DeviceNo: get('SERVER_ATTRIBUTE', 'DeviceNo'),
+      MQTT_CLIENT_ID: get('SERVER_ATTRIBUTE', 'MQTT_CLIENT_ID'),
+      DeviceName: get('SERVER_ATTRIBUTE', 'DeviceName'),
+      Longitude: get('SERVER_ATTRIBUTE', 'Longitude'),
+      Latitude: get('SERVER_ATTRIBUTE', 'Latitude'),
+    };
+    return entity;
+  }
+
+  function exportRelatedDevices() {
+    const data = getDataSource();
+    jsonToSheetXlsx({
+      data,
+      header: { name: '名称', DeviceNo: '设备编号', MQTT_CLIENT_ID: 'MQTT客户端ID', DeviceName: '设备名称', Longitude: '经度', Latitude: '纬度' },
+      filename: '关联设备列表.xlsx',
+    });
   }
 </script>
