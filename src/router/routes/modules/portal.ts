@@ -101,29 +101,53 @@ const deviceAccessTop: AppRouteModule = {
 };
 
 
-// detail pages as standalone leaf routes
-export const portalDeviceDetail: AppRouteModule = {
-  path: '/portal/devices/:deviceId',
-  name: 'PortalDeviceDetail',
-  component: () => import('/@/views/portal/devices/detail.vue'),
+// detail pages wrapped with LAYOUT to retain sidebar & tabs
+const portalDeviceDetailTop: AppRouteModule = {
+  path: '/portal-device-detail',
+  name: 'PortalDeviceDetailTop',
+  component: LAYOUT,
   meta: {
     title: t('routes.portal.deviceDetail'),
+    single: true,
     hideMenu: true,
-    currentActiveMenu: '/portal/devices',
     authority: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
   },
+  children: [
+    {
+      path: '/portal/devices/:deviceId',
+      name: 'PortalDeviceDetail',
+      component: () => import('/@/views/portal/devices/detail.vue'),
+      meta: {
+        title: t('routes.portal.deviceDetail'),
+        currentActiveMenu: '/portal/devices',
+        authority: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+      },
+    },
+  ],
 };
 
-export const portalAssetDetail: AppRouteModule = {
-  path: '/portal/assets/:assetId',
-  name: 'PortalAssetDetail',
-  component: () => import('/@/views/portal/assets/detail.vue'),
+const portalAssetDetailTop: AppRouteModule = {
+  path: '/portal-asset-detail',
+  name: 'PortalAssetDetailTop',
+  component: LAYOUT,
   meta: {
     title: t('routes.portal.assetDetail'),
+    single: true,
     hideMenu: true,
-    currentActiveMenu: '/portal/assets',
     authority: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
   },
+  children: [
+    {
+      path: '/portal/assets/:assetId',
+      name: 'PortalAssetDetail',
+      component: () => import('/@/views/portal/assets/detail.vue'),
+      meta: {
+        title: t('routes.portal.assetDetail'),
+        currentActiveMenu: '/portal/assets',
+        authority: [Authority.TENANT_ADMIN, Authority.CUSTOMER_USER],
+      },
+    },
+  ],
 };
 
 export default [
@@ -131,6 +155,6 @@ export default [
   portalAssetsTop,
   portalMapTop,
   deviceAccessTop,
-  portalDeviceDetail,
-  portalAssetDetail,
+  portalDeviceDetailTop,
+  portalAssetDetailTop,
 ];
