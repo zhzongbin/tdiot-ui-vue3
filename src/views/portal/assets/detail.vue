@@ -71,11 +71,13 @@
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
+  import { useTabs } from '/@/hooks/web/useTabs';
   import dayjs from 'dayjs';
   import { ASSET_FIELDS } from '/@/views/portal/config/attributes';
 
   const { t } = useI18n();
   const detail = ref<any>({});
+  const { setTitle } = useTabs();
 
   onMounted(async () => {
     const assetId = router.currentRoute.value.params.assetId as string;
@@ -99,6 +101,10 @@
     });
     const rec = page.data?.[0];
     detail.value = mapEntityRow(rec);
+    const name = detail.value?.name;
+    if (name) {
+      await setTitle(name);
+    }
   });
 
   function mapEntityRow(row: any) {
