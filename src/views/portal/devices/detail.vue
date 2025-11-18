@@ -2,7 +2,7 @@
   <PageWrapper :title="t('routes.portal.deviceDetail')">
     <div class="space-y-6">
       <div class="flex gap-2">
-        <a-button type="primary" @click="goRelatedAssets">查看关联资产列表</a-button>
+        <a-button type="primary" @click="goRelatedAssets">查看所属地灾点</a-button>
       </div>
       <a-card :title="t('routes.portal.devices')">
         <a-descriptions :column="2" bordered>
@@ -48,6 +48,7 @@
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
+  import { findRelationListByToAndType } from '/@/api/tb/relation';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
   import dayjs from 'dayjs';
@@ -119,10 +120,22 @@
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'DEVICE' } });
   }
 
-  function goRelatedAssets() {
+  async function goRelatedAssets() {
     const id = detail.value?.entityId?.id;
-    if (id) {
-      router.push({ path: '/portal/assets', query: { rootType: 'DEVICE', rootId: id, direction: 'TO', relationType: 'Contains' } });
-    }
+    if (!id) return;
+    try {
+      const list = await findRelationListByToAndType({
+        toId: id,
+        toType: EntityType.DEVICE,
+        relationType: 'Contains',
+        relationTypeGroup: 'COMMON',
+      });
+      const assetId = list?.[0]?.from?.id;
+      if (assetId) {
+        router.push({ path: `/portal/assets/${assetId}` });
+        return;
+      }
+    } catch (e) {}
+    router.push({ path: '/portal/assets', query: { rootType: 'DEVICE', rootId: id, direction: 'TO', relationType: 'Contains' } });
   }
 </script>
