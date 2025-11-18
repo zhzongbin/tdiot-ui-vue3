@@ -130,14 +130,10 @@
     if (q && q.rootType && q.rootId && q.direction) {
       return {
         type: 'relationsQuery',
-        parameters: {
-          rootId: q.rootId,
-          rootType: q.rootType,
-          direction: q.direction,
-          relationTypeGroup: 'COMMON',
-          maxLevel: 1,
-          fetchLastLevelOnly: true,
-        },
+        rootEntity: { id: q.rootId, entityType: q.rootType },
+        direction: q.direction,
+        maxLevel: 1,
+        fetchLastLevelOnly: true,
         filters: [{ relationType: q.relationType || 'Contains', entityTypes: [EntityType.ASSET], negate: false }],
       };
     }
