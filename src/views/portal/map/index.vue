@@ -9,10 +9,16 @@
     </div>
     <div class="relative" style="height: 560px; width: 100%">
       <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
-      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index:9999">
-        <a-button size="small" :type="baseType==='vec'?'primary':'default'" @click="applyBaseType('vec')">矢量</a-button>
-        <a-button size="small" :type="baseType==='sat'?'primary':'default'" @click="applyBaseType('sat')">影像</a-button>
-        <a-button size="small" :type="baseType==='hybrid'?'primary':'default'" @click="applyBaseType('hybrid')">卫星混合</a-button>
+      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index: 9999">
+        <a-button size="small" :type="baseType === 'vec' ? 'primary' : 'default'" @click="applyBaseType('vec')"
+          >矢量</a-button
+        >
+        <a-button size="small" :type="baseType === 'sat' ? 'primary' : 'default'" @click="applyBaseType('sat')"
+          >影像</a-button
+        >
+        <a-button size="small" :type="baseType === 'hybrid' ? 'primary' : 'default'" @click="applyBaseType('hybrid')"
+          >卫星混合</a-button
+        >
       </div>
       <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center space-y-3">
@@ -20,7 +26,11 @@
           <a-button type="primary" @click="retryTianditu">重试</a-button>
         </div>
       </div>
-      <div v-if="mouseCoordText" class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs" style="z-index:9999;pointer-events:none">
+      <div
+        v-if="mouseCoordText"
+        class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs"
+        style="z-index: 9999; pointer-events: none"
+      >
         {{ mouseCoordText }}
       </div>
     </div>
@@ -100,23 +110,23 @@
         { type: 'ENTITY_FIELD', key: 'label' },
       ],
       pageLink: { page: 0, pageSize: 200 },
-      latestValues: [
-        ...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k })),
-      ],
+      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
     });
-    const list = page.data.map((row: any) => {
-      const latest = row.latest || {};
-      const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
-      return {
-        name: get('ENTITY_FIELD', 'name'),
-        label: get('ENTITY_FIELD', 'label'),
-        active: get('SERVER_ATTRIBUTE', 'active') === true || get('SERVER_ATTRIBUTE', 'active') === 'true',
-        lastActivityTime: Number(get('SERVER_ATTRIBUTE', 'lastActivityTime')),
-        longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
-        latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
-        typename: get('SERVER_ATTRIBUTE', 'DeviceType') || get('SERVER_ATTRIBUTE', '监测类型') || '',
-      };
-    }).filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
+    const list = page.data
+      .map((row: any) => {
+        const latest = row.latest || {};
+        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+        return {
+          name: get('ENTITY_FIELD', 'name'),
+          label: get('ENTITY_FIELD', 'label'),
+          active: get('SERVER_ATTRIBUTE', 'active') === true || get('SERVER_ATTRIBUTE', 'active') === 'true',
+          lastActivityTime: Number(get('SERVER_ATTRIBUTE', 'lastActivityTime')),
+          longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
+          latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
+          typename: get('SERVER_ATTRIBUTE', 'DeviceType') || get('SERVER_ATTRIBUTE', '监测类型') || '',
+        };
+      })
+      .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
     renderMarkers(list);
   }
 
@@ -129,22 +139,22 @@
         { type: 'ENTITY_FIELD', key: 'label' },
       ],
       pageLink: { page: 0, pageSize: 200 },
-      latestValues: [
-        ...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k })),
-      ],
+      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
     });
-    const list = page.data.map((row: any) => {
-      const latest = row.latest || {};
-      const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
-      return {
-        name: get('ENTITY_FIELD', 'name'),
-        label: get('ENTITY_FIELD', 'label'),
-        longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
-        latitude: Number(get('SERVER_ATTRIBUTE', '纬度')),
-        active: undefined,
-        lastActivityTime: undefined,
-      };
-    }).filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
+    const list = page.data
+      .map((row: any) => {
+        const latest = row.latest || {};
+        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+        return {
+          name: get('ENTITY_FIELD', 'name'),
+          label: get('ENTITY_FIELD', 'label'),
+          longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
+          latitude: Number(get('SERVER_ATTRIBUTE', '纬度')),
+          active: undefined,
+          lastActivityTime: undefined,
+        };
+      })
+      .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
     renderMarkers(list);
   }
 

@@ -32,35 +32,48 @@
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
-  <a-card :title="ASSET_FIELDS.groups.geo.title">
-    <a-descriptions :column="2" bordered>
-      <a-descriptions-item :label="alias('经度')">
-        <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['经度']) }}</a>
-      </a-descriptions-item>
-      <a-descriptions-item :label="alias('纬度')">
-        <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['纬度']) }}</a>
-      </a-descriptions-item>
-    </a-descriptions>
-  </a-card>
-  <a-card title="地灾点位置与设备分布">
-    <div class="relative" style="height: 420px; width: 100%">
-      <div id="asset-tdt-map" style="height: 100%; width: 100%"></div>
-      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index:9999">
-        <a-button size="small" :type="baseType==='vec'?'primary':'default'" @click="applyBaseType('vec')">矢量</a-button>
-        <a-button size="small" :type="baseType==='sat'?'primary':'default'" @click="applyBaseType('sat')">影像</a-button>
-        <a-button size="small" :type="baseType==='hybrid'?'primary':'default'" @click="applyBaseType('hybrid')">卫星混合</a-button>
-      </div>
-      <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
-        <div class="text-center space-y-3">
-          <div>天地图加载失败</div>
-          <a-button type="primary" @click="retryTianditu">重试</a-button>
+      <a-card :title="ASSET_FIELDS.groups.geo.title">
+        <a-descriptions :column="2" bordered>
+          <a-descriptions-item :label="alias('经度')">
+            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['经度']) }}</a>
+          </a-descriptions-item>
+          <a-descriptions-item :label="alias('纬度')">
+            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['纬度']) }}</a>
+          </a-descriptions-item>
+        </a-descriptions>
+      </a-card>
+      <a-card title="地灾点位置与设备分布">
+        <div class="relative" style="height: 420px; width: 100%">
+          <div id="asset-tdt-map" style="height: 100%; width: 100%"></div>
+          <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index: 9999">
+            <a-button size="small" :type="baseType === 'vec' ? 'primary' : 'default'" @click="applyBaseType('vec')"
+              >矢量</a-button
+            >
+            <a-button size="small" :type="baseType === 'sat' ? 'primary' : 'default'" @click="applyBaseType('sat')"
+              >影像</a-button
+            >
+            <a-button
+              size="small"
+              :type="baseType === 'hybrid' ? 'primary' : 'default'"
+              @click="applyBaseType('hybrid')"
+              >卫星混合</a-button
+            >
+          </div>
+          <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
+            <div class="text-center space-y-3">
+              <div>天地图加载失败</div>
+              <a-button type="primary" @click="retryTianditu">重试</a-button>
+            </div>
+          </div>
+          <div
+            v-if="mouseCoordText"
+            class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs"
+            style="z-index: 9999; pointer-events: none"
+          >
+            {{ mouseCoordText }}
+          </div>
         </div>
-      </div>
-      <div v-if="mouseCoordText" class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs" style="z-index:9999;pointer-events:none">
-        {{ mouseCoordText }}
-      </div>
-    </div>
-  </a-card>
+      </a-card>
       <a-card :title="ASSET_FIELDS.groups.stats.title">
         <a-descriptions :column="2" bordered>
           <a-descriptions-item v-for="key in groupOrder('stats')" :key="key" :label="alias(key)">
@@ -189,7 +202,7 @@
   }
   function displayValue(val: any) {
     if (val === undefined || val === null || val === '') return '';
-    if (typeof val === 'number' && (String(val).length >= 12)) return dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss');
+    if (typeof val === 'number' && String(val).length >= 12) return dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss');
     return val;
   }
   function openMap(lon?: any, lat?: any) {
@@ -200,7 +213,10 @@
   function goRelatedDevices() {
     const id = detail.value?.entityId?.id;
     if (id) {
-      router.push({ path: '/portal/devices', query: { rootType: 'ASSET', rootId: id, direction: 'FROM', relationType: 'Contains' } });
+      router.push({
+        path: '/portal/devices',
+        query: { rootType: 'ASSET', rootId: id, direction: 'FROM', relationType: 'Contains' },
+      });
     }
   }
 
@@ -240,7 +256,15 @@
 
   async function fetchRelatedDevices(param: any) {
     const assetId = router.currentRoute.value.params.assetId as string;
-    const serverAttrKeys = ['DeviceNo', 'MQTT_CLIENT_ID', 'DeviceName', 'Longitude', 'Latitude', 'DeviceType', '监测类型'];
+    const serverAttrKeys = [
+      'DeviceNo',
+      'MQTT_CLIENT_ID',
+      'DeviceName',
+      'Longitude',
+      'Latitude',
+      'DeviceType',
+      '监测类型',
+    ];
     const query = {
       entityFilter: {
         type: 'relationsQuery',
@@ -260,11 +284,12 @@
         page: param.page,
         pageSize: param.pageSize,
         textSearch: null,
-        sortOrder: { direction: param.sortOrder || 'DESC', key: { type: 'ENTITY_FIELD', key: param.sortProperty || 'createdTime' } },
+        sortOrder: {
+          direction: param.sortOrder || 'DESC',
+          key: { type: 'ENTITY_FIELD', key: param.sortProperty || 'createdTime' },
+        },
       },
-      latestValues: [
-        ...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k })),
-      ],
+      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
     };
     const page = await findEntityDataByQuery(query);
     const mapped = page.data.map((row: any) => mapDeviceRow(row));
@@ -292,7 +317,14 @@
     const data = getDataSource();
     jsonToSheetXlsx({
       data,
-      header: { name: '名称', DeviceNo: '设备编号', MQTT_CLIENT_ID: 'MQTT客户端ID', DeviceName: '设备名称', Longitude: '经度', Latitude: '纬度' },
+      header: {
+        name: '名称',
+        DeviceNo: '设备编号',
+        MQTT_CLIENT_ID: 'MQTT客户端ID',
+        DeviceName: '设备名称',
+        Longitude: '经度',
+        Latitude: '纬度',
+      },
       filename: '关联设备列表.xlsx',
     });
   }
@@ -390,7 +422,9 @@
           `<div><strong>名称：</strong><span>${item.name || ''}</span></div>` +
           `<div><strong>类型：</strong><span>${item.typename || ''}</span></div>` +
           `<div><strong>坐标：</strong><span>${item.lon.toFixed(6)}, ${item.lat.toFixed(6)}</span></div>` +
-          (item.entityId?.id ? `<div style="margin-top:6px"><a href="javascript:void(0)" onclick="window.__openDeviceDetail('${item.entityId.id}')">查看设备详情</a></div>` : '') +
+          (item.entityId?.id
+            ? `<div style="margin-top:6px"><a href="javascript:void(0)" onclick="window.__openDeviceDetail('${item.entityId.id}')">查看设备详情</a></div>`
+            : '') +
           `</div>`;
         const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
         marker.addEventListener('click', function () {

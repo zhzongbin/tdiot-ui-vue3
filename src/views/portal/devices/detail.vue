@@ -118,7 +118,7 @@
   }
   function displayValue(val: any) {
     if (val === undefined || val === null || val === '') return '';
-    if (typeof val === 'number' && (String(val).length >= 12)) return dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss');
+    if (typeof val === 'number' && String(val).length >= 12) return dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss');
     return val;
   }
   function openMap(lon?: any, lat?: any) {
@@ -142,6 +142,9 @@
         return;
       }
     } catch (e) {}
-    router.push({ path: '/portal/assets', query: { rootType: 'DEVICE', rootId: id, direction: 'TO', relationType: 'Contains' } });
+    router.push({
+      path: '/portal/assets',
+      query: { rootType: 'DEVICE', rootId: id, direction: 'TO', relationType: 'Contains' },
+    });
   }
 </script>
