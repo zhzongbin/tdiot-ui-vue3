@@ -32,16 +32,30 @@
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
-      <a-card :title="ASSET_FIELDS.groups.geo.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item :label="alias('经度')">
-            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['经度']) }}</a>
-          </a-descriptions-item>
-          <a-descriptions-item :label="alias('纬度')">
-            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['纬度']) }}</a>
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
+  <a-card :title="ASSET_FIELDS.groups.geo.title">
+    <a-descriptions :column="2" bordered>
+      <a-descriptions-item :label="alias('经度')">
+        <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['经度']) }}</a>
+      </a-descriptions-item>
+      <a-descriptions-item :label="alias('纬度')">
+        <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['纬度']) }}</a>
+      </a-descriptions-item>
+    </a-descriptions>
+  </a-card>
+  <a-card title="地灾点位置与设备分布">
+    <div class="relative" style="height: 420px; width: 100%">
+      <div id="asset-tdt-map" style="height: 100%; width: 100%"></div>
+      <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
+        <div class="text-center space-y-3">
+          <div>天地图加载失败</div>
+          <a-button type="primary" @click="retryTianditu">重试</a-button>
+        </div>
+      </div>
+      <div v-if="mouseCoordText" class="absolute left-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs">
+        {{ mouseCoordText }}
+      </div>
+    </div>
+  </a-card>
       <a-card :title="ASSET_FIELDS.groups.stats.title">
         <a-descriptions :column="2" bordered>
           <a-descriptions-item v-for="key in groupOrder('stats')" :key="key" :label="alias(key)">
@@ -77,7 +91,7 @@
   };
 </script>
 <script lang="ts" setup>
-  import { ref, onMounted } from 'vue';
+  import { ref, onMounted, watchEffect } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
@@ -89,10 +103,15 @@
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
   import { Icon } from '/@/components/Icon';
   import { jsonToSheetXlsx } from '/@/components/Excel/src/Export2Excel';
+  import { useTianditu } from '/@/hooks/web/useTianditu';
 
   const { t } = useI18n();
   const detail = ref<any>({});
   const { setTitle } = useTabs();
+  const { success: tdtReady, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
+  let tdtMap: any = undefined;
+  const mouseCoordText = ref('');
+  const tdtError = ref(false);
 
   onMounted(async () => {
     const assetId = router.currentRoute.value.params.assetId as string;
@@ -122,6 +141,19 @@
     }
 
     await reloadRelated();
+
+    if (tdtReady.value) {
+      initTianditu();
+      renderDeviceMarkers();
+    }
+  });
+
+  watchEffect(() => {
+    tdtError.value = tdtErrorRef.value === true;
+    if (tdtReady.value && !tdtMap) {
+      initTianditu();
+      renderDeviceMarkers();
+    }
   });
 
   function mapEntityRow(row: any) {
@@ -253,5 +285,104 @@
       header: { name: '名称', DeviceNo: '设备编号', MQTT_CLIENT_ID: 'MQTT客户端ID', DeviceName: '设备名称', Longitude: '经度', Latitude: '纬度' },
       filename: '关联设备列表.xlsx',
     });
+  }
+
+  function initTianditu() {
+    if (!T.value) return;
+    tdtMap = new T.value.Map('asset-tdt-map', { minZoom: 5, maxZoom: 22 });
+    tdtMap.enableScrollWheelZoom();
+    const ctrl = new T.value.Control.MapType([
+      { title: '地图', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/vector.png', layer: (window as any).TMAP_NORMAL_MAP },
+      { title: '卫星', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/satellite.png', layer: (window as any).TMAP_SATELLITE_MAP },
+      { title: '卫星混合', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/satellitepoi.png', layer: (window as any).TMAP_HYBRID_MAP },
+    ]);
+    tdtMap.addControl(ctrl);
+    tdtMap.setMapType((window as any).TMAP_SATELLITE_MAP);
+    tdtMap.addControl(new T.value.Control.Scale());
+    tdtMap.addControl(new T.value.Control.Zoom());
+    tdtMap.addEventListener('mousemove', function (e: any) {
+      const lng = Number(e.lnglat?.lng)?.toFixed(6);
+      const lat = Number(e.lnglat?.lat)?.toFixed(6);
+      mouseCoordText.value = `经度: ${lng}, 纬度: ${lat}`;
+    });
+    const lon = Number(detail.value['经度']);
+    const lat = Number(detail.value['纬度']);
+    if (Number.isFinite(lon) && Number.isFinite(lat)) {
+      tdtMap.centerAndZoom(new T.value.LngLat(lon, lat), 18);
+    }
+  }
+
+  function renderDeviceMarkers() {
+    if (!tdtMap || !T.value) return;
+    tdtMap.clearOverLays();
+    const list = (getDataSource() || []) as Array<any>;
+    const points: any[] = [];
+    list
+      .map((row: any) => ({
+        entityId: row.entityId,
+        name: row.name || row.DeviceName,
+        typename: row.DeviceType || row['监测类型'] || '',
+        lon: Number(row.Longitude),
+        lat: Number(row.Latitude),
+      }))
+      .filter((x) => Number.isFinite(x.lon) && Number.isFinite(x.lat))
+      .forEach((item) => {
+        const pt = new T.value.LngLat(item.lon, item.lat);
+        points.push(pt);
+        const color = stringToColor(item.typename || '默认');
+        const iconUrl = buildCircleSvgIcon(color, 8);
+        const icon = new T.value.Icon({ iconUrl, iconSize: new T.value.Point(16, 16), iconAnchor: new T.value.Point(8, 8) });
+        const marker = new T.value.Marker(pt, { icon });
+        const infoHtml =
+          `<div style="font-size:12px;line-height:1.6">` +
+          `<div><strong>名称：</strong><span>${item.name || ''}</span></div>` +
+          `<div><strong>类型：</strong><span>${item.typename || ''}</span></div>` +
+          `<div><strong>坐标：</strong><span>${item.lon.toFixed(6)}, ${item.lat.toFixed(6)}</span></div>` +
+          (item.entityId?.id ? `<div style="margin-top:6px"><a href="javascript:void(0)" onclick="window.__openDeviceDetail('${item.entityId.id}')">查看设备详情</a></div>` : '') +
+          `</div>`;
+        const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
+        marker.addEventListener('click', function (e: any) {
+          tdtMap.openInfoWindow(infoWindow, e.lnglat);
+        });
+        tdtMap.addOverLay(marker);
+      });
+    if (points.length === 1) {
+      tdtMap.centerAndZoom(points[0], 18);
+    } else if (points.length > 1) {
+      tdtMap.setViewport(points);
+      if (tdtMap.getZoom && tdtMap.getZoom() < 18) {
+        tdtMap.setZoom(18);
+      }
+    }
+    (window as any).__openDeviceDetail = (id: string) => router.push(`/portal/devices/${id}`);
+  }
+
+  function stringToColor(str: string) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const h = Math.abs(hash) % 360;
+    return `hsl(${h},70%,50%)`;
+  }
+
+  function buildCircleSvgIcon(color: string, radius: number) {
+    const size = radius * 2;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${size} ${size}'><circle cx='${radius}' cy='${radius}' r='${radius}' fill='${color}' stroke='white' stroke-width='2'/></svg>`;
+    return 'data:image/svg+xml;base64,' + btoa(svg);
+  }
+
+  function retryTianditu() {
+    const tk = import.meta.env.VITE_TIANDITU_TK || '';
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `https://api.tianditu.gov.cn/api?v=4.0&tk=${tk}&_=${Date.now()}`;
+    script.onload = () => {
+      tdtError.value = false;
+      if (!tdtMap) initTianditu();
+      renderDeviceMarkers();
+    };
+    script.onerror = () => {
+      tdtError.value = true;
+    };
+    document.head.appendChild(script);
   }
 </script>
