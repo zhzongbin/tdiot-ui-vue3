@@ -45,13 +45,18 @@
   <a-card title="地灾点位置与设备分布">
     <div class="relative" style="height: 420px; width: 100%">
       <div id="asset-tdt-map" style="height: 100%; width: 100%"></div>
+      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index:9999">
+        <a-button size="small" :type="baseType==='vec'?'primary':'default'" @click="applyBaseType('vec')">矢量</a-button>
+        <a-button size="small" :type="baseType==='sat'?'primary':'default'" @click="applyBaseType('sat')">影像</a-button>
+        <a-button size="small" :type="baseType==='hybrid'?'primary':'default'" @click="applyBaseType('hybrid')">卫星混合</a-button>
+      </div>
       <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center space-y-3">
           <div>天地图加载失败</div>
           <a-button type="primary" @click="retryTianditu">重试</a-button>
         </div>
       </div>
-      <div v-if="mouseCoordText" class="absolute left-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs">
+      <div v-if="mouseCoordText" class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs" style="z-index:9999;pointer-events:none">
         {{ mouseCoordText }}
       </div>
     </div>
@@ -110,8 +115,10 @@
   const { setTitle } = useTabs();
   const { success: tdtReady, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
   let tdtMap: any = undefined;
+  // 使用内置 MapType，避免投影与瓦片集不一致
   const mouseCoordText = ref('');
   const tdtError = ref(false);
+  const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
 
   onMounted(async () => {
     const assetId = router.currentRoute.value.params.assetId as string;
@@ -203,6 +210,8 @@
     { title: '设备编号', dataIndex: 'DeviceNo', key: 'DeviceNo', align: 'left' },
     { title: 'MQTT客户端ID', dataIndex: 'MQTT_CLIENT_ID', key: 'MQTT_CLIENT_ID', align: 'left' },
     { title: '设备名称', dataIndex: 'DeviceName', key: 'DeviceName', align: 'left' },
+    { title: '设备类型', dataIndex: 'DeviceType', key: 'DeviceType', align: 'left' },
+    { title: '监测类型', dataIndex: '监测类型', key: '监测类型', align: 'left' },
     { title: '经度', dataIndex: 'Longitude', key: 'Longitude', align: 'left' },
     { title: '纬度', dataIndex: 'Latitude', key: 'Latitude', align: 'left' },
   ];
@@ -232,7 +241,7 @@
 
   async function fetchRelatedDevices(param: any) {
     const assetId = router.currentRoute.value.params.assetId as string;
-    const serverAttrKeys = ['DeviceNo', 'MQTT_CLIENT_ID', 'DeviceName', 'Longitude', 'Latitude'];
+    const serverAttrKeys = ['DeviceNo', 'MQTT_CLIENT_ID', 'DeviceName', 'Longitude', 'Latitude', 'DeviceType', '监测类型'];
     const query = {
       entityFilter: {
         type: 'relationsQuery',
@@ -272,6 +281,8 @@
       DeviceNo: get('SERVER_ATTRIBUTE', 'DeviceNo'),
       MQTT_CLIENT_ID: get('SERVER_ATTRIBUTE', 'MQTT_CLIENT_ID'),
       DeviceName: get('SERVER_ATTRIBUTE', 'DeviceName'),
+      DeviceType: get('SERVER_ATTRIBUTE', 'DeviceType'),
+      监测类型: get('SERVER_ATTRIBUTE', '监测类型'),
       Longitude: get('SERVER_ATTRIBUTE', 'Longitude'),
       Latitude: get('SERVER_ATTRIBUTE', 'Latitude'),
     };
@@ -289,15 +300,9 @@
 
   function initTianditu() {
     if (!T.value) return;
-    tdtMap = new T.value.Map('asset-tdt-map', { minZoom: 5, maxZoom: 22 });
+    // EPSG:4490（CGCS2000）与 EPSG:4326 坐标系一致使用经纬度度单位
+    tdtMap = new T.value.Map('asset-tdt-map', { minZoom: 3, maxZoom: 22, projection: 'EPSG:4326' });
     tdtMap.enableScrollWheelZoom();
-    const ctrl = new T.value.Control.MapType([
-      { title: '地图', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/vector.png', layer: (window as any).TMAP_NORMAL_MAP },
-      { title: '卫星', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/satellite.png', layer: (window as any).TMAP_SATELLITE_MAP },
-      { title: '卫星混合', icon: 'https://api.tianditu.gov.cn/v4.0/image/map/maptype/satellitepoi.png', layer: (window as any).TMAP_HYBRID_MAP },
-    ]);
-    tdtMap.addControl(ctrl);
-    tdtMap.setMapType((window as any).TMAP_SATELLITE_MAP);
     tdtMap.addControl(new T.value.Control.Scale());
     tdtMap.addControl(new T.value.Control.Zoom());
     tdtMap.addEventListener('mousemove', function (e: any) {
@@ -305,6 +310,7 @@
       const lat = Number(e.lnglat?.lat)?.toFixed(6);
       mouseCoordText.value = `经度: ${lng}, 纬度: ${lat}`;
     });
+    applyBaseType(baseType.value);
     const lon = Number(detail.value['经度']);
     const lat = Number(detail.value['纬度']);
     if (Number.isFinite(lon) && Number.isFinite(lat)) {
@@ -321,7 +327,7 @@
       .map((row: any) => ({
         entityId: row.entityId,
         name: row.name || row.DeviceName,
-        typename: row.DeviceType || row['监测类型'] || '',
+        typename: row.DeviceType || row['设备名称'] || '',
         lon: Number(row.Longitude),
         lat: Number(row.Latitude),
       }))
@@ -330,9 +336,56 @@
         const pt = new T.value.LngLat(item.lon, item.lat);
         points.push(pt);
         const color = stringToColor(item.typename || '默认');
-        const iconUrl = buildCircleSvgIcon(color, 8);
-        const icon = new T.value.Icon({ iconUrl, iconSize: new T.value.Point(16, 16), iconAnchor: new T.value.Point(8, 8) });
-        const marker = new T.value.Marker(pt, { icon });
+
+        const CircleMarker = T.value.Overlay.extend({
+          initialize: function (lnglat: any, options: any) {
+            this.lnglat = lnglat;
+            this.options = options || {};
+          },
+          onAdd: function (map: any) {
+            this.map = map;
+            const div = (this._div = document.createElement('div'));
+            div.style.position = 'absolute';
+            div.style.width = '16px';
+            div.style.height = '16px';
+            div.style.borderRadius = '8px';
+            div.style.transform = 'translate3d(-50%, -50%, 0)';
+            div.style.background = this.options.color || '#1e90ff';
+            div.style.border = '2px solid #fff';
+            div.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
+            div.style.zIndex = '1000';
+            div.title = this.options.name || '';
+            div.setAttribute('role', 'button');
+            map.getPanes().overlayPane.appendChild(div);
+            this.update();
+            return div;
+          },
+          onRemove: function () {
+            const parent = this._div?.parentNode;
+            if (parent) parent.removeChild(this._div);
+            this._div = null;
+            this.map = null;
+          },
+          update: function () {
+            if (!this.map || !this._div) return;
+            const pos = this.map.lngLatToLayerPoint(this.lnglat);
+            this._div.style.top = pos.y + 'px';
+            this._div.style.left = pos.x + 'px';
+          },
+          getLngLat: function () {
+            return this.lnglat;
+          },
+          addEventListener: function (type: string, callback: Function) {
+            if (this._div) {
+              this._div['on' + type] = typeof callback === 'function' ? callback : function () {};
+            }
+          },
+          openInfoWindow: function (infoWindow: any) {
+            this.map.openInfoWindow(infoWindow, this.lnglat);
+          },
+        });
+
+        const marker = new CircleMarker(pt, { color, name: item.name });
         const infoHtml =
           `<div style="font-size:12px;line-height:1.6">` +
           `<div><strong>名称：</strong><span>${item.name || ''}</span></div>` +
@@ -341,8 +394,8 @@
           (item.entityId?.id ? `<div style="margin-top:6px"><a href="javascript:void(0)" onclick="window.__openDeviceDetail('${item.entityId.id}')">查看设备详情</a></div>` : '') +
           `</div>`;
         const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
-        marker.addEventListener('click', function (e: any) {
-          tdtMap.openInfoWindow(infoWindow, e.lnglat);
+        marker.addEventListener('click', function () {
+          marker.openInfoWindow(infoWindow);
         });
         tdtMap.addOverLay(marker);
       });
@@ -384,5 +437,17 @@
       tdtError.value = true;
     };
     document.head.appendChild(script);
+  }
+
+  function applyBaseType(type: 'sat' | 'hybrid' | 'vec') {
+    baseType.value = type;
+    if (!tdtMap) return;
+    if (type === 'sat') {
+      tdtMap.setMapType((window as any).TMAP_SATELLITE_MAP);
+    } else if (type === 'hybrid') {
+      tdtMap.setMapType((window as any).TMAP_HYBRID_MAP);
+    } else if (type === 'vec') {
+      tdtMap.setMapType((window as any).TMAP_NORMAL_MAP);
+    }
   }
 </script>
