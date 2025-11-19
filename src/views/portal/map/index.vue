@@ -7,7 +7,23 @@
       </a-select>
       <a-button type="primary" @click="reload">刷新</a-button>
     </div>
-    <div id="portal-bmap" style="height: 560px; width: 100%"></div>
+    <div class="relative" style="height: 560px; width: 100%">
+      <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
+      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index:9999">
+        <a-button size="small" :type="baseType==='vec'?'primary':'default'" @click="applyBaseType('vec')">矢量</a-button>
+        <a-button size="small" :type="baseType==='sat'?'primary':'default'" @click="applyBaseType('sat')">影像</a-button>
+        <a-button size="small" :type="baseType==='hybrid'?'primary':'default'" @click="applyBaseType('hybrid')">卫星混合</a-button>
+      </div>
+      <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
+        <div class="text-center space-y-3">
+          <div>天地图加载失败</div>
+          <a-button type="primary" @click="retryTianditu">重试</a-button>
+        </div>
+      </div>
+      <div v-if="mouseCoordText" class="absolute right-2 bottom-2 px-2 py-1 bg-white/80 rounded shadow text-xs" style="z-index:9999;pointer-events:none">
+        {{ mouseCoordText }}
+      </div>
+    </div>
   </PageWrapper>
 </template>
 <script lang="ts">
@@ -19,7 +35,7 @@
   import { ref, watchEffect, onMounted } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
-  import { useBMap } from '/@/hooks/web/useBMap';
+  import { useTianditu } from '/@/hooks/web/useTianditu';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import dayjs from 'dayjs';
@@ -29,10 +45,14 @@
 
   const entityType = ref<'DEVICE' | 'ASSET'>(((router.currentRoute.value.query.entityType as any) || 'DEVICE') as any);
 
-  const { success, BMapGL } = useBMap(import.meta.env.VITE_BAIDU_MAP_AK || '');
+  const { success, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
   let mapInstance: any = undefined;
+  const tdtError = ref(false);
+  const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
+  const mouseCoordText = ref('');
 
   watchEffect(() => {
+    tdtError.value = tdtErrorRef.value === true;
     if (success.value) {
       initMap();
       reload();
@@ -40,20 +60,29 @@
   });
 
   function initMap() {
+    mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 22 });
+    applyBaseType(baseType.value);
+    mapInstance.enableScrollWheelZoom();
+    mapInstance.addControl(new T.value.Control.Scale());
+    mapInstance.addControl(new T.value.Control.Zoom());
+    mapInstance.addEventListener('mousemove', function (e: any) {
+      const lng = Number(e.lnglat?.lng)?.toFixed(6);
+      const lat = Number(e.lnglat?.lat)?.toFixed(6);
+      mouseCoordText.value = `经度: ${lng}, 纬度: ${lat}`;
+    });
     const centerQuery = router.currentRoute.value.query.center as string | undefined;
-    let center: any = '诸城市';
     if (centerQuery) {
       const [lon, lat] = centerQuery.split(',').map((x) => Number(x));
-      center = new BMapGL.value.Point(lon, lat);
+      if (Number.isFinite(lon) && Number.isFinite(lat)) {
+        mapInstance.centerAndZoom(new T.value.LngLat(lon, lat), 18);
+      }
     }
-    mapInstance = new BMapGL.value.Map('portal-bmap', { enableRotate: false, enableTilt: false });
-    mapInstance.centerAndZoom(center, 10);
-    mapInstance.enableScrollWheelZoom(true);
   }
 
   async function reload() {
-    if (!mapInstance || !BMapGL.value) return;
-    mapInstance.clearOverlays();
+    if (!mapInstance || !T.value) return;
+    const overlays = mapInstance.getOverlays?.() || [];
+    overlays.forEach((ov: any) => mapInstance.removeOverLay?.(ov));
 
     if (entityType.value === 'DEVICE') {
       await loadDevices();
@@ -85,6 +114,7 @@
         lastActivityTime: Number(get('SERVER_ATTRIBUTE', 'lastActivityTime')),
         longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
         latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
+        typename: get('SERVER_ATTRIBUTE', 'DeviceType') || get('SERVER_ATTRIBUTE', '监测类型') || '',
       };
     }).filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
     renderMarkers(list);
@@ -119,27 +149,120 @@
   }
 
   function renderMarkers(list: Array<any>) {
+    const points: any[] = [];
+    const CircleMarker = T.value.Overlay.extend({
+      initialize: function (lnglat: any, options: any) {
+        this.lnglat = lnglat;
+        this.options = options || {};
+      },
+      onAdd: function (map: any) {
+        this.map = map;
+        const div = (this._div = document.createElement('div'));
+        div.style.position = 'absolute';
+        div.style.width = '16px';
+        div.style.height = '16px';
+        div.style.borderRadius = '8px';
+        div.style.transform = 'translate3d(-50%, -50%, 0)';
+        div.style.background = this.options.color || '#1e90ff';
+        div.style.border = '2px solid #fff';
+        div.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
+        div.style.zIndex = '1000';
+        div.title = this.options.name || '';
+        div.setAttribute('role', 'button');
+        map.getPanes().overlayPane.appendChild(div);
+        this.update();
+        return div;
+      },
+      onRemove: function () {
+        const parent = this._div?.parentNode;
+        if (parent) parent.removeChild(this._div);
+        this._div = null;
+        this.map = null;
+      },
+      update: function () {
+        if (!this.map || !this._div) return;
+        const pos = this.map.lngLatToLayerPoint(this.lnglat);
+        this._div.style.top = pos.y + 'px';
+        this._div.style.left = pos.x + 'px';
+      },
+      addEventListener: function (type: string, callback: Function) {
+        if (this._div) {
+          this._div['on' + type] = typeof callback === 'function' ? callback : function () {};
+        }
+      },
+      openInfoWindow: function (infoWindow: any) {
+        this.map.openInfoWindow(infoWindow, this.lnglat);
+      },
+    });
+
     list.forEach((item) => {
-      const point = new BMapGL.value.Point(item.longitude, item.latitude);
-      const marker = new BMapGL.value.Marker(point);
-      mapInstance.addOverlay(marker);
-      const info =
-        `<div style="display:flex;justify-content:space-between;margin:0 6px 0 1px"><strong>名称：</strong><span>${item.name || ''}</span></div>` +
-        `<div style="display:flex;justify-content:space-between;margin:0 6px 0 1px"><strong>标签：</strong><span>${item.label || ''}</span></div>` +
+      const pt = new T.value.LngLat(item.longitude, item.latitude);
+      points.push(pt);
+      const color = stringToColor(item.typename || item.label || '默认');
+      const marker = new CircleMarker(pt, { color, name: item.name });
+      const infoHtml =
+        `<div style="font-size:12px;line-height:1.6">` +
+        `<div><strong>名称：</strong><span>${item.name || ''}</span></div>` +
+        `<div><strong>标签：</strong><span>${item.label || ''}</span></div>` +
         (item.active !== undefined
-          ? `<div style="display:flex;justify-content:space-between;margin:0 6px 0 1px"><strong>状态：</strong><span style="color:${item.active ? 'green' : 'red'}">${item.active ? '在线' : '离线'}</span></div>`
+          ? `<div><strong>状态：</strong><span style="color:${item.active ? 'green' : 'red'}">${item.active ? '在线' : '离线'}</span></div>`
           : '') +
         (item.lastActivityTime
-          ? `<div style="display:flex;justify-content:space-between;margin:0 6px 0 1px"><strong>活动时间：</strong><span>${dayjs(item.lastActivityTime).format('YYYY-MM-DD HH:mm:ss')}</span></div>`
-          : '');
-      const infoWindow = new BMapGL.value.InfoWindow(info, { width: 240, height: 130, title: `<strong>${item.name || ''}</strong>` });
+          ? `<div><strong>活动时间：</strong><span>${dayjs(item.lastActivityTime).format('YYYY-MM-DD HH:mm:ss')}</span></div>`
+          : '') +
+        `<div><strong>坐标：</strong><span>${item.longitude.toFixed(6)}, ${item.latitude.toFixed(6)}</span></div>` +
+        `</div>`;
+      const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
       marker.addEventListener('click', function () {
-        mapInstance.openInfoWindow(infoWindow, point);
+        marker.openInfoWindow(infoWindow);
       });
+      mapInstance.addOverLay(marker);
     });
+
+    if (points.length === 1) {
+      mapInstance.centerAndZoom(points[0], 18);
+    } else if (points.length > 1) {
+      mapInstance.setViewport(points);
+      if (mapInstance.getZoom && mapInstance.getZoom() < 18) {
+        mapInstance.setZoom(18);
+      }
+    }
   }
 
-  onMounted(() => {
-    // noop, map will init in watchEffect
-  });
+  function stringToColor(str: string) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const h = Math.abs(hash) % 360;
+    return `hsl(${h},70%,50%)`;
+  }
+
+  function retryTianditu() {
+    const tk = import.meta.env.VITE_TIANDITU_TK || '';
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.src = `https://api.tianditu.gov.cn/api?v=4.0&tk=${tk}&_=${Date.now()}`;
+    script.onload = () => {
+      tdtError.value = false;
+      if (!mapInstance) initMap();
+      reload();
+    };
+    script.onerror = () => {
+      tdtError.value = true;
+    };
+    document.head.appendChild(script);
+  }
+
+  function applyBaseType(type: 'sat' | 'hybrid' | 'vec') {
+    baseType.value = type;
+    if (!mapInstance) return;
+    if (type === 'sat') {
+      mapInstance.setMapType((window as any).TMAP_SATELLITE_MAP);
+    } else if (type === 'hybrid') {
+      mapInstance.setMapType((window as any).TMAP_HYBRID_MAP);
+    } else if (type === 'vec') {
+      mapInstance.setMapType((window as any).TMAP_NORMAL_MAP);
+    }
+  }
+
+  onMounted(() => {});
 </script>

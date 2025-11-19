@@ -115,7 +115,6 @@
   const { setTitle } = useTabs();
   const { success: tdtReady, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
   let tdtMap: any = undefined;
-  // 使用内置 MapType，避免投影与瓦片集不一致
   const mouseCoordText = ref('');
   const tdtError = ref(false);
   const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
