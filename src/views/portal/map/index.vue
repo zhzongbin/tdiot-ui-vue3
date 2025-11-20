@@ -60,6 +60,7 @@
   const tdtError = ref(false);
   const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
   const mouseCoordText = ref('');
+  let activeOverlays: any[] = [];
 
   watchEffect(() => {
     tdtError.value = tdtErrorRef.value === true;
@@ -70,7 +71,7 @@
   });
 
   function initMap() {
-    mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 22 });
+    mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 18 });
     applyBaseType(baseType.value);
     mapInstance.enableScrollWheelZoom();
     mapInstance.addControl(new T.value.Control.Scale());
@@ -84,15 +85,24 @@
     if (centerQuery) {
       const [lon, lat] = centerQuery.split(',').map((x) => Number(x));
       if (Number.isFinite(lon) && Number.isFinite(lat)) {
-        mapInstance.centerAndZoom(new T.value.LngLat(lon, lat), 18);
+        mapInstance.centerAndZoom(new T.value.LngLat(lon, lat), 14);
       }
+    } else {
+      mapInstance.centerAndZoom(new T.value.LngLat(104.195397, 35.86166), 5);
     }
+    mapInstance.addEventListener('zoomend', function () {
+      activeOverlays.forEach((ov: any) => ov.update && ov.update());
+    });
+    mapInstance.addEventListener('moveend', function () {
+      activeOverlays.forEach((ov: any) => ov.update && ov.update());
+    });
   }
 
   async function reload() {
     if (!mapInstance || !T.value) return;
     const overlays = mapInstance.getOverlays?.() || [];
     overlays.forEach((ov: any) => mapInstance.removeOverLay?.(ov));
+    activeOverlays = [];
 
     if (entityType.value === 'DEVICE') {
       await loadDevices();
@@ -227,15 +237,13 @@
         marker.openInfoWindow(infoWindow);
       });
       mapInstance.addOverLay(marker);
+      activeOverlays.push(marker);
     });
 
     if (points.length === 1) {
-      mapInstance.centerAndZoom(points[0], 18);
+      mapInstance.centerAndZoom(points[0], 16);
     } else if (points.length > 1) {
       mapInstance.setViewport(points);
-      if (mapInstance.getZoom && mapInstance.getZoom() < 18) {
-        mapInstance.setZoom(18);
-      }
     }
   }
 
