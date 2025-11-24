@@ -372,29 +372,60 @@
           initialize: function (lnglat: any, options: any) {
             this.lnglat = lnglat;
             this.options = options || {};
+            this._clickCallback = null;
           },
           onAdd: function (map: any) {
             this.map = map;
-            const div = (this._div = document.createElement('div'));
-            div.style.position = 'absolute';
-            div.style.width = '16px';
-            div.style.height = '16px';
-            div.style.borderRadius = '8px';
-            div.style.transform = 'translate3d(-50%, -50%, 0)';
-            div.style.background = this.options.color || '#1e90ff';
-            div.style.border = '2px solid #fff';
-            div.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
-            div.style.zIndex = '1000';
-            div.title = this.options.name || '';
-            div.setAttribute('role', 'button');
-            map.getPanes().overlayPane.appendChild(div);
+            const container = (this._div = document.createElement('div'));
+            container.style.position = 'absolute';
+            container.style.zIndex = '1000';
+            container.style.transform = 'translate3d(-50%, -50%, 0)';
+            container.style.cursor = 'pointer';
+
+            // Dot
+            const dot = document.createElement('div');
+            dot.style.width = '16px';
+            dot.style.height = '16px';
+            dot.style.borderRadius = '8px';
+            dot.style.background = this.options.color || '#1e90ff';
+            dot.style.border = '2px solid #fff';
+            dot.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
+            dot.title = this.options.name || '';
+            dot.setAttribute('role', 'button');
+            container.appendChild(dot);
+
+            // Label (默认显示)
+            const label = document.createElement('div');
+            label.className = 'device-label';
+            label.style.position = 'absolute';
+            label.style.top = '18px';
+            label.style.left = '50%';
+            label.style.transform = 'translateX(-50%)';
+            label.style.background = 'rgba(255,255,255,0.8)';
+            label.style.padding = '2px 4px';
+            label.style.borderRadius = '2px';
+            label.style.fontSize = '12px';
+            label.style.whiteSpace = 'nowrap';
+            label.style.pointerEvents = 'none';
+            label.style.display = 'block'; // 默认显示
+            label.innerText = this.options.name || '';
+            this._labelDiv = label;
+            container.appendChild(label);
+
+            // Bind click event if callback exists
+            if (this._clickCallback) {
+              container.addEventListener('click', this._clickCallback);
+            }
+
+            map.getPanes().overlayPane.appendChild(container);
             this.update();
-            return div;
+            return container;
           },
           onRemove: function () {
             const parent = this._div?.parentNode;
             if (parent) parent.removeChild(this._div);
             this._div = null;
+            this._labelDiv = null;
             this.map = null;
           },
           update: function () {
@@ -407,8 +438,12 @@
             return this.lnglat;
           },
           addEventListener: function (type: string, callback: Function) {
-            if (this._div) {
-              this._div['on' + type] = typeof callback === 'function' ? callback : function () {};
+            if (type === 'click' && typeof callback === 'function') {
+              this._clickCallback = callback;
+              // If already added to map, bind immediately
+              if (this._div) {
+                this._div.addEventListener('click', callback);
+              }
             }
           },
           openInfoWindow: function (infoWindow: any) {
