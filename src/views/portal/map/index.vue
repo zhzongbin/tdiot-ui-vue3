@@ -59,14 +59,14 @@
   const { success, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
   let mapInstance: any = undefined;
   const tdtError = ref(false);
-  const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
+  const baseType = ref<'sat' | 'hybrid' | 'vec'>('hybrid');
   const mouseCoordText = ref('');
   let activeOverlays: any[] = [];
   let assetOverlays: any[] = [];
   let deviceOverlays: any[] = [];
   let currentMode: 'ASSET_LOW' | 'DEVICE_HIGH' | null = null;
   let loadToken = 0;
-  const zoomThreshold = 14;
+  const zoomThreshold = 17;
 
   watchEffect(() => {
     tdtError.value = tdtErrorRef.value === true;
@@ -78,7 +78,7 @@
 
   function initMap() {
     mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 18 });
-    applyBaseType(baseType.value);
+    // applyBaseType(baseType.value); // Moved to end
     mapInstance.enableScrollWheelZoom();
     mapInstance.addControl(new T.value.Control.Zoom());
     mapInstance.addEventListener('mousemove', function (e: any) {
@@ -128,6 +128,7 @@
         reload();
       }
     });
+    applyBaseType(baseType.value);
   }
 
   function updateMarkers(zoom: number) {
@@ -141,7 +142,7 @@
     }
     // Update Devices
     if (currentMode === 'DEVICE_HIGH') {
-      const showLabel = zoom >= 16;
+      const showLabel = zoom >= 18;
       deviceOverlays.forEach((ov: any) => {
         if (ov.updateVisibilty) ov.updateVisibilty(showLabel);
         if (ov.update) ov.update();
@@ -512,12 +513,17 @@
   function applyBaseType(type: 'sat' | 'hybrid' | 'vec') {
     baseType.value = type;
     if (!mapInstance) return;
+    const center = mapInstance.getCenter();
+    const zoom = mapInstance.getZoom();
     if (type === 'sat') {
       mapInstance.setMapType((window as any).TMAP_SATELLITE_MAP);
     } else if (type === 'hybrid') {
       mapInstance.setMapType((window as any).TMAP_HYBRID_MAP);
     } else if (type === 'vec') {
       mapInstance.setMapType((window as any).TMAP_NORMAL_MAP);
+    }
+    if (center && zoom) {
+      mapInstance.centerAndZoom(center, zoom);
     }
   }
 
