@@ -48,6 +48,7 @@
   import { useTianditu } from '/@/hooks/web/useTianditu';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
   import { EntityType } from '/@/enums/entityTypeEnum';
+  import { EntityKeyType, EntityKeyValueType, FilterPredicateType, NumericOperation } from '/@/enums/queryEnum';
   import dayjs from 'dayjs';
   import { router } from '/@/router';
 
@@ -61,6 +62,11 @@
   const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
   const mouseCoordText = ref('');
   let activeOverlays: any[] = [];
+  let assetOverlays: any[] = [];
+  let deviceOverlays: any[] = [];
+  let currentMode: 'ASSET_LOW' | 'DEVICE_HIGH' | null = null;
+  let loadToken = 0;
+  const zoomThreshold = 14;
 
   watchEffect(() => {
     tdtError.value = tdtErrorRef.value === true;
@@ -74,7 +80,6 @@
     mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 18 });
     applyBaseType(baseType.value);
     mapInstance.enableScrollWheelZoom();
-    mapInstance.addControl(new T.value.Control.Scale());
     mapInstance.addControl(new T.value.Control.Zoom());
     mapInstance.addEventListener('mousemove', function (e: any) {
       const lng = Number(e.lnglat?.lng)?.toFixed(6);
@@ -91,10 +96,24 @@
       mapInstance.centerAndZoom(new T.value.LngLat(104.195397, 35.86166), 5);
     }
     mapInstance.addEventListener('zoomend', function () {
-      activeOverlays.forEach((ov: any) => ov.update && ov.update());
+      const zoom = mapInstance.getZoom?.() || 5;
+      if (zoom < zoomThreshold) {
+        if (currentMode !== 'ASSET_LOW') {
+          reload();
+        } else {
+          assetOverlays.forEach((ov: any) => ov.update && ov.update());
+        }
+      } else {
+        reload();
+      }
     });
     mapInstance.addEventListener('moveend', function () {
-      activeOverlays.forEach((ov: any) => ov.update && ov.update());
+      const zoom = mapInstance.getZoom?.() || 5;
+      if (zoom < zoomThreshold) {
+        assetOverlays.forEach((ov: any) => ov.update && ov.update());
+      } else {
+        reload();
+      }
     });
   }
 
@@ -103,69 +122,140 @@
     const overlays = mapInstance.getOverlays?.() || [];
     overlays.forEach((ov: any) => mapInstance.removeOverLay?.(ov));
     activeOverlays = [];
-
-    if (entityType.value === 'DEVICE') {
-      await loadDevices();
+    assetOverlays = [];
+    deviceOverlays = [];
+    const zoom = mapInstance.getZoom?.() || 5;
+    if (zoom < zoomThreshold) {
+      currentMode = 'ASSET_LOW';
+      await loadAssets(true);
     } else {
-      await loadAssets();
+      currentMode = 'DEVICE_HIGH';
+      await loadDevices(true);
     }
   }
 
-  async function loadDevices() {
-    const serverAttrKeys = ['Longitude', 'Latitude', 'active', 'lastActivityTime'];
-    const page = await findEntityDataByQuery({
-      entityFilter: { type: 'entityType', entityType: EntityType.DEVICE },
-      entityFields: [
-        { type: 'ENTITY_FIELD', key: 'name' },
-        { type: 'ENTITY_FIELD', key: 'label' },
-      ],
-      pageLink: { page: 0, pageSize: 200 },
-      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
-    });
-    const list = page.data
-      .map((row: any) => {
-        const latest = row.latest || {};
-        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
-        return {
-          name: get('ENTITY_FIELD', 'name'),
-          label: get('ENTITY_FIELD', 'label'),
-          active: get('SERVER_ATTRIBUTE', 'active') === true || get('SERVER_ATTRIBUTE', 'active') === 'true',
-          lastActivityTime: Number(get('SERVER_ATTRIBUTE', 'lastActivityTime')),
-          longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
-          latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
-          typename: get('SERVER_ATTRIBUTE', 'DeviceType') || get('SERVER_ATTRIBUTE', '监测类型') || '',
-        };
-      })
-      .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
-    renderMarkers(list);
+  async function loadDevices(resetToken?: boolean) {
+    const serverAttrKeys = ['Longitude', 'Latitude', 'active', 'lastActivityTime', 'DeviceType', '监测类型'];
+    const token = resetToken ? ++loadToken : loadToken;
+    const bounds = mapInstance.getBounds?.();
+    const sw = bounds?.getSouthWest?.();
+    const ne = bounds?.getNorthEast?.();
+    const minLng = Number(sw?.lng) || -180;
+    const minLat = Number(sw?.lat) || -90;
+    const maxLng = Number(ne?.lng) || 180;
+    const maxLat = Number(ne?.lat) || 90;
+    const keyFilters: any[] = [
+      {
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Longitude' },
+        valueType: EntityKeyValueType.NUMERIC,
+        predicate: {
+          type: FilterPredicateType.NUMERIC,
+          operation: NumericOperation.GREATER_OR_EQUAL,
+          value: { defaultValue: minLng },
+        },
+      },
+      {
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Longitude' },
+        valueType: EntityKeyValueType.NUMERIC,
+        predicate: {
+          type: FilterPredicateType.NUMERIC,
+          operation: NumericOperation.LESS_OR_EQUAL,
+          value: { defaultValue: maxLng },
+        },
+      },
+      {
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Latitude' },
+        valueType: EntityKeyValueType.NUMERIC,
+        predicate: {
+          type: FilterPredicateType.NUMERIC,
+          operation: NumericOperation.GREATER_OR_EQUAL,
+          value: { defaultValue: minLat },
+        },
+      },
+      {
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Latitude' },
+        valueType: EntityKeyValueType.NUMERIC,
+        predicate: {
+          type: FilterPredicateType.NUMERIC,
+          operation: NumericOperation.LESS_OR_EQUAL,
+          value: { defaultValue: maxLat },
+        },
+      },
+    ];
+    let pageIndex = 0;
+    const pageSize = 1000;
+    const all: any[] = [];
+    for (;;) {
+      const page = await findEntityDataByQuery({
+        entityFilter: { type: 'entityType', entityType: EntityType.DEVICE },
+        entityFields: [
+          { type: 'ENTITY_FIELD', key: 'name' },
+          { type: 'ENTITY_FIELD', key: 'label' },
+        ],
+        pageLink: { page: pageIndex, pageSize },
+        latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
+        keyFilters,
+      });
+      const list = page.data
+        .map((row: any) => {
+          const latest = row.latest || {};
+          const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+          return {
+            name: get('ENTITY_FIELD', 'name'),
+            label: get('ENTITY_FIELD', 'label'),
+            active: get('SERVER_ATTRIBUTE', 'active') === true || get('SERVER_ATTRIBUTE', 'active') === 'true',
+            lastActivityTime: Number(get('SERVER_ATTRIBUTE', 'lastActivityTime')),
+            longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
+            latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
+            typename: get('SERVER_ATTRIBUTE', 'DeviceType') || get('SERVER_ATTRIBUTE', '监测类型') || '',
+          };
+        })
+        .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
+      all.push(...list);
+      if (token !== loadToken) return;
+      if (!page.hasNext) break;
+      pageIndex += 1;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    renderMarkers(all);
   }
 
-  async function loadAssets() {
-    const serverAttrKeys = ['经度', '纬度'];
-    const page = await findEntityDataByQuery({
-      entityFilter: { type: 'entityType', entityType: EntityType.ASSET },
-      entityFields: [
-        { type: 'ENTITY_FIELD', key: 'name' },
-        { type: 'ENTITY_FIELD', key: 'label' },
-      ],
-      pageLink: { page: 0, pageSize: 200 },
-      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
-    });
-    const list = page.data
-      .map((row: any) => {
-        const latest = row.latest || {};
-        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
-        return {
-          name: get('ENTITY_FIELD', 'name'),
-          label: get('ENTITY_FIELD', 'label'),
-          longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
-          latitude: Number(get('SERVER_ATTRIBUTE', '纬度')),
-          active: undefined,
-          lastActivityTime: undefined,
-        };
-      })
-      .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
-    renderMarkers(list);
+  async function loadAssets(resetToken?: boolean) {
+    const serverAttrKeys = ['经度', '纬度', 'Stationname', '监测点名称'];
+    const token = resetToken ? ++loadToken : loadToken;
+    let pageIndex = 0;
+    const pageSize = 1000;
+    const all: any[] = [];
+    for (;;) {
+      const page = await findEntityDataByQuery({
+        entityFilter: { type: 'entityType', entityType: EntityType.ASSET },
+        entityFields: [
+          { type: 'ENTITY_FIELD', key: 'name' },
+          { type: 'ENTITY_FIELD', key: 'label' },
+        ],
+        pageLink: { page: pageIndex, pageSize },
+        latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
+      });
+      const list = page.data
+        .map((row: any) => {
+          const latest = row.latest || {};
+          const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+          return {
+            name: get('ENTITY_FIELD', 'name'),
+            label: get('ENTITY_FIELD', 'label'),
+            longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
+            latitude: Number(get('SERVER_ATTRIBUTE', '纬度')),
+            stationname: get('SERVER_ATTRIBUTE', 'Stationname') || get('SERVER_ATTRIBUTE', '监测点名称'),
+          };
+        })
+        .filter((x: any) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude));
+      all.push(...list);
+      if (token !== loadToken) return;
+      if (!page.hasNext) break;
+      pageIndex += 1;
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    renderAssetMarkers(all);
   }
 
   function renderMarkers(list: Array<any>) {
@@ -238,6 +328,64 @@
       });
       mapInstance.addOverLay(marker);
       activeOverlays.push(marker);
+      deviceOverlays.push(marker);
+    });
+
+    if (points.length === 1) {
+      mapInstance.centerAndZoom(points[0], 16);
+    } else if (points.length > 1) {
+      mapInstance.setViewport(points);
+    }
+  }
+
+  function renderAssetMarkers(list: Array<any>) {
+    const points: any[] = [];
+    const LabelMarker = T.value.Overlay.extend({
+      initialize: function (lnglat: any, options: any) {
+        this.lnglat = lnglat;
+        this.options = options || {};
+      },
+      onAdd: function (map: any) {
+        this.map = map;
+        const div = (this._div = document.createElement('div'));
+        div.style.position = 'absolute';
+        div.style.transform = 'translate3d(-50%, -50%, 0)';
+        div.style.background = 'rgba(255,255,255,0.85)';
+        div.style.border = '1px solid #d9d9d9';
+        div.style.borderRadius = '4px';
+        div.style.boxShadow = '0 1px 2px rgba(0,0,0,0.15)';
+        div.style.padding = '2px 6px';
+        div.style.fontSize = '12px';
+        div.style.lineHeight = '18px';
+        div.style.color = '#333';
+        div.style.whiteSpace = 'nowrap';
+        div.style.zIndex = '1000';
+        div.innerText = this.options.text || '';
+        map.getPanes().overlayPane.appendChild(div);
+        this.update();
+        return div;
+      },
+      onRemove: function () {
+        const parent = this._div?.parentNode;
+        if (parent) parent.removeChild(this._div);
+        this._div = null;
+        this.map = null;
+      },
+      update: function () {
+        if (!this.map || !this._div) return;
+        const pos = this.map.lngLatToLayerPoint(this.lnglat);
+        this._div.style.top = pos.y + 'px';
+        this._div.style.left = pos.x + 'px';
+      },
+    });
+
+    list.forEach((item) => {
+      const pt = new T.value.LngLat(item.longitude, item.latitude);
+      points.push(pt);
+      const marker = new LabelMarker(pt, { text: item.stationname || item.label || item.name || '' });
+      mapInstance.addOverLay(marker);
+      activeOverlays.push(marker);
+      assetOverlays.push(marker);
     });
 
     if (points.length === 1) {
