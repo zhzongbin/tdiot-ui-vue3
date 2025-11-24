@@ -76,6 +76,14 @@
     }
   });
 
+  // Global navigation functions for InfoWindow links
+  (window as any).__navigateToDevice = (deviceId: string) => {
+    router.push(`/portal/devices/${deviceId}`);
+  };
+  (window as any).__navigateToAsset = (assetId: string) => {
+    router.push(`/portal/assets/${assetId}`);
+  };
+
   function initMap() {
     mapInstance = new T.value.Map('portal-tdt-map', { minZoom: 3, maxZoom: 18 });
     // applyBaseType(baseType.value); // Moved to end
@@ -236,6 +244,7 @@
           const latest = row.latest || {};
           const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
           return {
+            id: row.entityId?.id,
             name: get('ENTITY_FIELD', 'name'),
             label: get('ENTITY_FIELD', 'label'),
             active: get('SERVER_ATTRIBUTE', 'active') === true || get('SERVER_ATTRIBUTE', 'active') === 'true',
@@ -276,6 +285,7 @@
           const latest = row.latest || {};
           const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
           return {
+            id: row.entityId?.id,
             name: get('ENTITY_FIELD', 'name'),
             label: get('ENTITY_FIELD', 'label'),
             longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
@@ -299,6 +309,7 @@
       initialize: function (lnglat: any, options: any) {
         this.lnglat = lnglat;
         this.options = options || {};
+        this._clickCallback = null;
       },
       onAdd: function (map: any) {
         this.map = map;
@@ -306,6 +317,7 @@
         container.style.position = 'absolute';
         container.style.zIndex = '1000';
         container.style.transform = 'translate3d(-50%, -50%, 0)';
+        container.style.cursor = 'pointer';
 
         // Dot
         const dot = document.createElement('div');
@@ -337,6 +349,11 @@
         this._labelDiv = label;
         container.appendChild(label);
 
+        // Bind click event if callback exists
+        if (this._clickCallback) {
+          container.addEventListener('click', this._clickCallback);
+        }
+
         map.getPanes().overlayPane.appendChild(container);
         this.update();
         return container;
@@ -360,10 +377,12 @@
         }
       },
       addEventListener: function (type: string, callback: Function) {
-        if (this._div) {
-          // Bind click to the container or just the dot? Usually the dot is the clickable target.
-          // But let's bind to the container for easier hitting.
-          this._div['on' + type] = typeof callback === 'function' ? callback : function () {};
+        if (type === 'click' && typeof callback === 'function') {
+          this._clickCallback = callback;
+          // If already added to map, bind immediately
+          if (this._div) {
+            this._div.addEventListener('click', callback);
+          }
         }
       },
       openInfoWindow: function (infoWindow: any) {
@@ -387,6 +406,7 @@
           ? `<div><strong>活动时间：</strong><span>${dayjs(item.lastActivityTime).format('YYYY-MM-DD HH:mm:ss')}</span></div>`
           : '') +
         `<div><strong>坐标：</strong><span>${item.longitude.toFixed(6)}, ${item.latitude.toFixed(6)}</span></div>` +
+        `<div style="margin-top:8px"><a href="javascript:void(0)" onclick="window.__navigateToDevice('${item.id}')" style="color:#1890ff;text-decoration:none">查看详情 →</a></div>` +
         `</div>`;
       const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
       marker.addEventListener('click', function () {
@@ -410,6 +430,7 @@
       initialize: function (lnglat: any, options: any) {
         this.lnglat = lnglat;
         this.options = options || {};
+        this._clickCallback = null;
       },
       onAdd: function (map: any) {
         this.map = map;
@@ -420,6 +441,7 @@
         container.style.display = 'flex';
         container.style.flexDirection = 'column';
         container.style.alignItems = 'center';
+        container.style.cursor = 'pointer';
 
         // Dot for asset
         const dot = document.createElement('div');
@@ -447,6 +469,11 @@
         this._labelDiv = label;
         container.appendChild(label);
 
+        // Bind click event if callback exists
+        if (this._clickCallback) {
+          container.addEventListener('click', this._clickCallback);
+        }
+
         map.getPanes().overlayPane.appendChild(container);
         this.update();
         return container;
@@ -469,12 +496,35 @@
           this._labelDiv.style.display = showLabel ? 'block' : 'none';
         }
       },
+      addEventListener: function (type: string, callback: Function) {
+        if (type === 'click' && typeof callback === 'function') {
+          this._clickCallback = callback;
+          // If already added to map, bind immediately
+          if (this._div) {
+            this._div.addEventListener('click', callback);
+          }
+        }
+      },
+      openInfoWindow: function (infoWindow: any) {
+        this.map.openInfoWindow(infoWindow, this.lnglat);
+      },
     });
 
     list.forEach((item) => {
       const pt = new T.value.LngLat(item.longitude, item.latitude);
       points.push(pt);
       const marker = new LabelMarker(pt, { text: item.stationname || item.label || item.name || '' });
+      const infoHtml =
+        `<div style="font-size:12px;line-height:1.6">` +
+        `<div><strong>名称：</strong><span>${item.stationname || item.name || ''}</span></div>` +
+        `<div><strong>标签：</strong><span>${item.label || ''}</span></div>` +
+        `<div><strong>坐标：</strong><span>${item.longitude.toFixed(6)}, ${item.latitude.toFixed(6)}</span></div>` +
+        `<div style="margin-top:8px"><a href="javascript:void(0)" onclick="window.__navigateToAsset('${item.id}')" style="color:#1890ff;text-decoration:none">查看详情 →</a></div>` +
+        `</div>`;
+      const infoWindow = new T.value.InfoWindow(infoHtml, { autoPan: true });
+      marker.addEventListener('click', function () {
+        marker.openInfoWindow(infoWindow);
+      });
       mapInstance.addOverLay(marker);
       activeOverlays.push(marker);
       assetOverlays.push(marker);
