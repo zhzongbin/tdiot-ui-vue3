@@ -93,7 +93,7 @@
         mapInstance.centerAndZoom(new T.value.LngLat(lon, lat), 14);
       }
     } else {
-      mapInstance.centerAndZoom(new T.value.LngLat(104.195397, 35.86166), 5);
+      mapInstance.centerAndZoom(new T.value.LngLat(118, 26), 7);
     }
     mapInstance.addEventListener('zoomend', function () {
       const zoom = mapInstance.getZoom?.() || 5;
@@ -396,11 +396,11 @@
       deviceOverlays.push(marker);
     });
 
-    if (points.length === 1) {
-      mapInstance.centerAndZoom(points[0], 16);
-    } else if (points.length > 1) {
-      mapInstance.setViewport(points);
-    }
+    // if (points.length === 1) {
+    //   mapInstance.centerAndZoom(points[0], 16);
+    // } else if (points.length > 1) {
+    //   mapInstance.setViewport(points);
+    // }
   }
 
   function renderAssetMarkers(list: Array<any>) {
@@ -479,11 +479,11 @@
       assetOverlays.push(marker);
     });
 
-    if (points.length === 1) {
-      mapInstance.centerAndZoom(points[0], 16);
-    } else if (points.length > 1) {
-      mapInstance.setViewport(points);
-    }
+    // if (points.length === 1) {
+    //   mapInstance.centerAndZoom(points[0], 16);
+    // } else if (points.length > 1) {
+    //   mapInstance.setViewport(points);
+    // }
   }
 
   function stringToColor(str: string) {
