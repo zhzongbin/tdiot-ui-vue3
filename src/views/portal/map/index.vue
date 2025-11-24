@@ -101,20 +101,52 @@
         if (currentMode !== 'ASSET_LOW') {
           reload();
         } else {
-          assetOverlays.forEach((ov: any) => ov.update && ov.update());
+          updateMarkers(zoom);
         }
       } else {
-        reload();
+        if (currentMode !== 'DEVICE_HIGH') {
+          reload();
+        } else {
+          updateMarkers(zoom);
+        }
       }
     });
     mapInstance.addEventListener('moveend', function () {
       const zoom = mapInstance.getZoom?.() || 5;
       if (zoom < zoomThreshold) {
-        assetOverlays.forEach((ov: any) => ov.update && ov.update());
+        // assetOverlays.forEach((ov: any) => ov.update && ov.update());
+        updateMarkers(zoom);
       } else {
+        // reload();
+        // For devices, we might need to reload if we moved too far, but for now let's just update markers if we are just panning small amounts
+        // Actually the original logic reloaded on moveend for devices to fetch new data in viewport. Let's keep that if needed.
+        // But if we just want to update labels, we can do that too.
+        // Let's stick to original logic: reload for devices (High zoom) to get data in view, update for assets (Low zoom).
+        // Wait, original logic:
+        // if (zoom < zoomThreshold) { assetOverlays.update... } else { reload() }
+        // So for devices it reloads.
         reload();
       }
     });
+  }
+
+  function updateMarkers(zoom: number) {
+    // Update Assets
+    if (currentMode === 'ASSET_LOW') {
+      const showLabel = zoom >= 10;
+      assetOverlays.forEach((ov: any) => {
+        if (ov.updateVisibilty) ov.updateVisibilty(showLabel);
+        if (ov.update) ov.update();
+      });
+    }
+    // Update Devices
+    if (currentMode === 'DEVICE_HIGH') {
+      const showLabel = zoom >= 16;
+      deviceOverlays.forEach((ov: any) => {
+        if (ov.updateVisibilty) ov.updateVisibilty(showLabel);
+        if (ov.update) ov.update();
+      });
+    }
   }
 
   async function reload() {
@@ -132,6 +164,8 @@
       currentMode = 'DEVICE_HIGH';
       await loadDevices(true);
     }
+    // Initial update for visibility
+    updateMarkers(zoom);
   }
 
   async function loadDevices(resetToken?: boolean) {
@@ -267,26 +301,50 @@
       },
       onAdd: function (map: any) {
         this.map = map;
-        const div = (this._div = document.createElement('div'));
-        div.style.position = 'absolute';
-        div.style.width = '16px';
-        div.style.height = '16px';
-        div.style.borderRadius = '8px';
-        div.style.transform = 'translate3d(-50%, -50%, 0)';
-        div.style.background = this.options.color || '#1e90ff';
-        div.style.border = '2px solid #fff';
-        div.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
-        div.style.zIndex = '1000';
-        div.title = this.options.name || '';
-        div.setAttribute('role', 'button');
-        map.getPanes().overlayPane.appendChild(div);
+        const container = (this._div = document.createElement('div'));
+        container.style.position = 'absolute';
+        container.style.zIndex = '1000';
+        container.style.transform = 'translate3d(-50%, -50%, 0)';
+
+        // Dot
+        const dot = document.createElement('div');
+        dot.style.width = '16px';
+        dot.style.height = '16px';
+        dot.style.borderRadius = '8px';
+        dot.style.background = this.options.color || '#1e90ff';
+        dot.style.border = '2px solid #fff';
+        dot.style.boxShadow = '0 0 4px rgba(0,0,0,0.4)';
+        dot.title = this.options.name || '';
+        dot.setAttribute('role', 'button');
+        container.appendChild(dot);
+
+        // Label
+        const label = document.createElement('div');
+        label.className = 'device-label';
+        label.style.position = 'absolute';
+        label.style.top = '18px';
+        label.style.left = '50%';
+        label.style.transform = 'translateX(-50%)';
+        label.style.background = 'rgba(255,255,255,0.8)';
+        label.style.padding = '2px 4px';
+        label.style.borderRadius = '2px';
+        label.style.fontSize = '12px';
+        label.style.whiteSpace = 'nowrap';
+        label.style.pointerEvents = 'none';
+        label.style.display = 'none'; // Hidden by default
+        label.innerText = this.options.name || '';
+        this._labelDiv = label;
+        container.appendChild(label);
+
+        map.getPanes().overlayPane.appendChild(container);
         this.update();
-        return div;
+        return container;
       },
       onRemove: function () {
         const parent = this._div?.parentNode;
         if (parent) parent.removeChild(this._div);
         this._div = null;
+        this._labelDiv = null;
         this.map = null;
       },
       update: function () {
@@ -295,8 +353,15 @@
         this._div.style.top = pos.y + 'px';
         this._div.style.left = pos.x + 'px';
       },
+      updateVisibilty: function (showLabel: boolean) {
+        if (this._labelDiv) {
+          this._labelDiv.style.display = showLabel ? 'block' : 'none';
+        }
+      },
       addEventListener: function (type: string, callback: Function) {
         if (this._div) {
+          // Bind click to the container or just the dot? Usually the dot is the clickable target.
+          // But let's bind to the container for easier hitting.
           this._div['on' + type] = typeof callback === 'function' ? callback : function () {};
         }
       },
@@ -347,28 +412,49 @@
       },
       onAdd: function (map: any) {
         this.map = map;
-        const div = (this._div = document.createElement('div'));
-        div.style.position = 'absolute';
-        div.style.transform = 'translate3d(-50%, -50%, 0)';
-        div.style.background = 'rgba(255,255,255,0.85)';
-        div.style.border = '1px solid #d9d9d9';
-        div.style.borderRadius = '4px';
-        div.style.boxShadow = '0 1px 2px rgba(0,0,0,0.15)';
-        div.style.padding = '2px 6px';
-        div.style.fontSize = '12px';
-        div.style.lineHeight = '18px';
-        div.style.color = '#333';
-        div.style.whiteSpace = 'nowrap';
-        div.style.zIndex = '1000';
-        div.innerText = this.options.text || '';
-        map.getPanes().overlayPane.appendChild(div);
+        const container = (this._div = document.createElement('div'));
+        container.style.position = 'absolute';
+        container.style.transform = 'translate3d(-50%, -50%, 0)';
+        container.style.zIndex = '1000';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'center';
+
+        // Dot for asset
+        const dot = document.createElement('div');
+        dot.style.width = '12px';
+        dot.style.height = '12px';
+        dot.style.borderRadius = '50%';
+        dot.style.background = '#fa8c16'; // Orange for assets
+        dot.style.border = '2px solid #fff';
+        dot.style.boxShadow = '0 1px 2px rgba(0,0,0,0.3)';
+        dot.style.marginBottom = '2px';
+        container.appendChild(dot);
+
+        // Label
+        const label = document.createElement('div');
+        label.style.background = 'rgba(255,255,255,0.85)';
+        label.style.border = '1px solid #d9d9d9';
+        label.style.borderRadius = '4px';
+        label.style.boxShadow = '0 1px 2px rgba(0,0,0,0.15)';
+        label.style.padding = '2px 6px';
+        label.style.fontSize = '12px';
+        label.style.lineHeight = '18px';
+        label.style.color = '#333';
+        label.style.whiteSpace = 'nowrap';
+        label.innerText = this.options.text || '';
+        this._labelDiv = label;
+        container.appendChild(label);
+
+        map.getPanes().overlayPane.appendChild(container);
         this.update();
-        return div;
+        return container;
       },
       onRemove: function () {
         const parent = this._div?.parentNode;
         if (parent) parent.removeChild(this._div);
         this._div = null;
+        this._labelDiv = null;
         this.map = null;
       },
       update: function () {
@@ -376,6 +462,11 @@
         const pos = this.map.lngLatToLayerPoint(this.lnglat);
         this._div.style.top = pos.y + 'px';
         this._div.style.left = pos.x + 'px';
+      },
+      updateVisibilty: function (showLabel: boolean) {
+        if (this._labelDiv) {
+          this._labelDiv.style.display = showLabel ? 'block' : 'none';
+        }
       },
     });
 
