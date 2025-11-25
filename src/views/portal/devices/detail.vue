@@ -53,24 +53,40 @@
       <a-card title="历史趋势" :loading="chartLoading">
         <template #extra>
           <div class="flex items-center gap-2">
-            <a-select
-              v-model:value="selectedKeys"
-              mode="multiple"
-              placeholder="选择数据指标"
-              style="min-width: 200px; max-width: 400px"
-              @change="handleChartFilterChange"
-              :maxTagCount="2"
-            >
-              <a-select-option v-for="key in telemetryKeys" :key="key" :value="key">{{ key }}</a-select-option>
-            </a-select>
-            <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleChartFilterChange">
+            <a-range-picker
+              v-model:value="customTimeRange"
+              show-time
+              @change="handleCustomTimeChange"
+              style="width: 320px"
+            />
+            <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleTimeRangeChange">
               <a-radio-button value="1h">1小时</a-radio-button>
               <a-radio-button value="24h">24小时</a-radio-button>
               <a-radio-button value="7d">7天</a-radio-button>
             </a-radio-group>
           </div>
         </template>
-        <div ref="chartRef" style="width: 100%; height: 400px"></div>
+
+        <a-tabs v-model:activeKey="activeTabKey" @change="handleTabChange">
+          <a-tab-pane key="monitoring" tab="监测数据">
+            <div class="mb-2 flex justify-end">
+              <a-select
+                v-model:value="selectedKeys"
+                mode="multiple"
+                placeholder="选择数据指标"
+                style="min-width: 200px; max-width: 400px"
+                @change="handleChartFilterChange"
+                :maxTagCount="2"
+              >
+                <a-select-option v-for="key in telemetryKeys" :key="key" :value="key">{{ key }}</a-select-option>
+              </a-select>
+            </div>
+            <div ref="chartRef" style="width: 100%; height: 400px"></div>
+          </a-tab-pane>
+          <a-tab-pane key="status" tab="设备状态">
+            <div ref="statusChartRef" style="width: 100%; height: 400px"></div>
+          </a-tab-pane>
+        </a-tabs>
       </a-card>
     </div>
   </PageWrapper>
@@ -89,12 +105,21 @@
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
   import { useTabs } from '/@/hooks/web/useTabs';
-  import dayjs from 'dayjs';
+  import dayjs, { Dayjs } from 'dayjs';
   import { DEVICE_FIELDS } from '/@/views/portal/config/attributes';
   import { getAttributesByScope, getTimeseriesKeys, getTimeseries } from '/@/api/tb/telemetry';
   import { Scope } from '/@/enums/telemetryEnum';
   import { useECharts } from '/@/hooks/web/useECharts';
   import { Ref, computed } from 'vue';
+  import { DatePicker, Tabs, TabPane, Select, Radio } from 'ant-design-vue';
+
+  const ARangePicker = DatePicker.RangePicker;
+  const ATabs = Tabs;
+  const ATabPane = TabPane;
+  const ASelect = Select;
+  const ASelectOption = Select.Option;
+  const ARadioGroup = Radio.Group;
+  const ARadioButton = Radio.Button;
 
   const { t } = useI18n();
   const detail = ref<any>({});
@@ -166,12 +191,26 @@
   });
 
   // Telemetry
+  const activeTabKey = ref('monitoring');
   const chartRef = ref<HTMLDivElement | null>(null);
-  const { setOptions } = useECharts(chartRef as Ref<HTMLDivElement>);
+  const statusChartRef = ref<HTMLDivElement | null>(null);
+
+  const { setOptions: setMonitoringOptions, resize: resizeMonitoring } = useECharts(chartRef as Ref<HTMLDivElement>);
+  const { setOptions: setStatusOptions, resize: resizeStatus } = useECharts(statusChartRef as Ref<HTMLDivElement>);
+
   const telemetryKeys = ref<string[]>([]);
   const selectedKeys = ref<string[]>([]);
   const timeRange = ref<string>('24h');
+  const customTimeRange = ref<[Dayjs, Dayjs] | undefined>(undefined);
   const chartLoading = ref(false);
+
+  // Status Keys Configuration
+  const STATUS_KEYS_CONFIG = [
+    { key: 'S1_ZT_1_temp', alias: '温度', axis: 'temp' },
+    { key: 'S1_ZT_1_solar_volt', alias: '光伏电压', axis: 'volt' },
+    { key: 'S1_ZT_1_humidity', alias: '湿度', axis: 'humidity' },
+    { key: 'S1_ZT_1_ext_power_volt', alias: '供电电压', axis: 'volt' },
+  ];
 
   onMounted(async () => {
     const deviceId = router.currentRoute.value.params.deviceId as string;
@@ -255,173 +294,84 @@
     }
   }
 
+  function handleTabChange() {
+    // Resize charts when tab changes to ensure correct rendering width
+    setTimeout(() => {
+      if (activeTabKey.value === 'monitoring') resizeMonitoring();
+      else resizeStatus();
+    }, 100);
+    fetchChartData();
+  }
+
+  function handleTimeRangeChange() {
+    customTimeRange.value = undefined;
+    fetchChartData();
+  }
+
+  function handleCustomTimeChange() {
+    if (customTimeRange.value) {
+      timeRange.value = ''; // Clear preset selection
+      fetchChartData();
+    }
+  }
+
+  function handleChartFilterChange() {
+    fetchChartData();
+  }
+
   async function fetchChartData() {
     const deviceId = router.currentRoute.value.params.deviceId as string;
-    if (!deviceId || selectedKeys.value.length === 0) {
-      setOptions({ series: [] });
-      return;
+    if (!deviceId) return;
+
+    // Determine keys and setOptions function based on active tab
+    let keysToFetch: string[] = [];
+    let setOptionsFn: Function = () => {};
+
+    if (activeTabKey.value === 'monitoring') {
+      if (selectedKeys.value.length === 0) {
+        setMonitoringOptions({ series: [] });
+        return;
+      }
+      keysToFetch = selectedKeys.value;
+      setOptionsFn = setMonitoringOptions;
+    } else {
+      keysToFetch = STATUS_KEYS_CONFIG.map((c) => c.key);
+      setOptionsFn = setStatusOptions;
     }
 
     chartLoading.value = true;
     try {
+      let startTs: number;
+      let endTs: number;
       const now = dayjs().valueOf();
-      let startTs = now;
-      if (timeRange.value === '1h') startTs = now - 60 * 60 * 1000;
-      else if (timeRange.value === '24h') startTs = now - 24 * 60 * 60 * 1000;
-      else if (timeRange.value === '7d') startTs = now - 7 * 24 * 60 * 60 * 1000;
+
+      if (customTimeRange.value && customTimeRange.value.length === 2) {
+        startTs = customTimeRange.value[0].valueOf();
+        endTs = customTimeRange.value[1].valueOf();
+      } else {
+        endTs = now;
+        if (timeRange.value === '1h') startTs = now - 60 * 60 * 1000;
+        else if (timeRange.value === '7d') startTs = now - 7 * 24 * 60 * 60 * 1000;
+        else startTs = now - 24 * 60 * 60 * 1000; // Default 24h
+      }
 
       const res = await getTimeseries({
         entityType: EntityType.DEVICE,
         entityId: deviceId,
-        keys: selectedKeys.value.join(','),
+        keys: keysToFetch.join(','),
         startTs,
-        endTs: now,
+        endTs,
         limit: 5000,
         orderBy: 'ASC',
       });
 
-      const series: any[] = [];
-      const yAxis: any[] = [];
-      const legendData: string[] = [];
       const dataMap = res as any;
 
-      // Classify keys
-      const groups = {
-        QJ: [] as string[],
-        LF: [] as string[],
-        JS: [] as string[],
-        Other: [] as string[],
-      };
-
-      selectedKeys.value.forEach((key) => {
-        if (key.includes('QJ')) groups.QJ.push(key);
-        else if (key.includes('LF')) groups.LF.push(key);
-        else if (key.includes('JS')) groups.JS.push(key);
-        else groups.Other.push(key);
-      });
-
-      let yAxisIndexCounter = 0;
-
-      // 1. QJ
-      if (groups.QJ.length > 0) {
-        yAxis.push({
-          type: 'value',
-          name: 'QJ',
-          position: 'left',
-          axisLine: { show: true },
-          max: 'dataMax',
-          min: 'dataMin',
-        });
-        groups.QJ.forEach((key) => {
-          const val = dataMap[key];
-          const dataPoints = Array.isArray(val) ? val : val?.data || [];
-          series.push({
-            name: key,
-            type: 'line',
-            symbol: 'circle',
-            showSymbol: false,
-            yAxisIndex: yAxisIndexCounter,
-            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
-          });
-          legendData.push(key);
-        });
-        yAxisIndexCounter++;
+      if (activeTabKey.value === 'monitoring') {
+        renderMonitoringChart(dataMap, keysToFetch, setOptionsFn);
+      } else {
+        renderStatusChart(dataMap, setOptionsFn);
       }
-
-      // 2. LF
-      if (groups.LF.length > 0) {
-        yAxis.push({
-          type: 'value',
-          name: 'LF',
-          position: 'right',
-          offset: 0,
-          axisLine: { show: true },
-          max: 'dataMax',
-          min: 'dataMin',
-          splitLine: { show: false },
-        });
-        groups.LF.forEach((key) => {
-          const val = dataMap[key];
-          const dataPoints = Array.isArray(val) ? val : val?.data || [];
-          series.push({
-            name: key,
-            type: 'line',
-            symbol: 'rect',
-            showSymbol: false,
-            yAxisIndex: yAxisIndexCounter,
-            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
-          });
-          legendData.push(key);
-        });
-        yAxisIndexCounter++;
-      }
-
-      // 3. JS
-      if (groups.JS.length > 0) {
-        yAxis.push({
-          type: 'value',
-          name: 'JS',
-          position: 'right',
-          offset: groups.LF.length > 0 ? 50 : 0,
-          axisLine: { show: true },
-          splitLine: { show: false },
-        });
-        groups.JS.forEach((key) => {
-          const val = dataMap[key];
-          const dataPoints = Array.isArray(val) ? val : val?.data || [];
-          series.push({
-            name: key,
-            type: 'bar',
-            yAxisIndex: yAxisIndexCounter,
-            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
-          });
-          legendData.push(key);
-        });
-        yAxisIndexCounter++;
-      }
-
-      // 4. Other (Default)
-      if (groups.Other.length > 0) {
-        if (yAxis.length === 0) {
-          yAxis.push({ type: 'value', position: 'left' });
-          yAxisIndexCounter++;
-        }
-
-        groups.Other.forEach((key) => {
-          const val = dataMap[key];
-          const dataPoints = Array.isArray(val) ? val : val?.data || [];
-          series.push({
-            name: key,
-            type: 'line',
-            yAxisIndex: 0, // Default to first axis
-            showSymbol: false,
-            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
-          });
-          legendData.push(key);
-        });
-      }
-
-      setOptions({
-        tooltip: {
-          trigger: 'axis',
-          axisPointer: { type: 'cross' },
-        },
-        legend: {
-          data: legendData,
-        },
-        grid: {
-          left: '3%',
-          right: groups.JS.length > 0 && groups.LF.length > 0 ? '15%' : '8%',
-          bottom: '3%',
-          containLabel: true,
-        },
-        xAxis: {
-          type: 'time',
-          boundaryGap: false as any,
-        },
-        yAxis: yAxis,
-        series: series,
-      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -429,8 +379,223 @@
     }
   }
 
-  function handleChartFilterChange() {
-    fetchChartData();
+  function renderMonitoringChart(dataMap: any, keys: string[], setOptions: Function) {
+    const series: any[] = [];
+    const yAxis: any[] = [];
+    const legendData: string[] = [];
+
+    // Classify keys
+    const groups = {
+      QJ: [] as string[],
+      LF: [] as string[],
+      JS: [] as string[],
+      Other: [] as string[],
+    };
+
+    keys.forEach((key) => {
+      if (key.includes('QJ')) groups.QJ.push(key);
+      else if (key.includes('LF')) groups.LF.push(key);
+      else if (key.includes('JS')) groups.JS.push(key);
+      else groups.Other.push(key);
+    });
+
+    let yAxisIndexCounter = 0;
+
+    // 1. QJ
+    if (groups.QJ.length > 0) {
+      yAxis.push({
+        type: 'value',
+        name: 'QJ',
+        position: 'left',
+        axisLine: { show: true },
+        max: 'dataMax',
+        min: 'dataMin',
+      });
+      groups.QJ.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+        series.push({
+          name: key,
+          type: 'line',
+          symbol: 'circle',
+          showSymbol: false,
+          yAxisIndex: yAxisIndexCounter,
+          data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+        });
+        legendData.push(key);
+      });
+      yAxisIndexCounter++;
+    }
+
+    // 2. LF
+    if (groups.LF.length > 0) {
+      yAxis.push({
+        type: 'value',
+        name: 'LF',
+        position: 'right',
+        offset: 0,
+        axisLine: { show: true },
+        max: 'dataMax',
+        min: 'dataMin',
+        splitLine: { show: false },
+      });
+      groups.LF.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+        series.push({
+          name: key,
+          type: 'line',
+          symbol: 'rect',
+          showSymbol: false,
+          yAxisIndex: yAxisIndexCounter,
+          data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+        });
+        legendData.push(key);
+      });
+      yAxisIndexCounter++;
+    }
+
+    // 3. JS
+    if (groups.JS.length > 0) {
+      yAxis.push({
+        type: 'value',
+        name: 'JS',
+        position: 'right',
+        offset: groups.LF.length > 0 ? 50 : 0,
+        axisLine: { show: true },
+        splitLine: { show: false },
+      });
+      groups.JS.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+        series.push({
+          name: key,
+          type: 'bar',
+          yAxisIndex: yAxisIndexCounter,
+          data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+        });
+        legendData.push(key);
+      });
+      yAxisIndexCounter++;
+    }
+
+    // 4. Other (Default)
+    if (groups.Other.length > 0) {
+      if (yAxis.length === 0) {
+        yAxis.push({ type: 'value', position: 'left' });
+        yAxisIndexCounter++;
+      }
+
+      groups.Other.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+        series.push({
+          name: key,
+          type: 'line',
+          yAxisIndex: 0, // Default to first axis
+          showSymbol: false,
+          data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+        });
+        legendData.push(key);
+      });
+    }
+
+    setOptions({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+      },
+      legend: {
+        data: legendData,
+      },
+      grid: {
+        left: '3%',
+        right: groups.JS.length > 0 && groups.LF.length > 0 ? '15%' : '8%',
+        bottom: '3%',
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false as any,
+      },
+      yAxis: yAxis,
+      series: series,
+    });
+  }
+
+  function renderStatusChart(dataMap: any, setOptions: Function) {
+    const series: any[] = [];
+    const yAxis: any[] = [];
+    const legendData: string[] = [];
+
+    // Define Axes: Temp (Left), Volt (Right), Humidity (Right Offset)
+    // 0: Temp
+    yAxis.push({
+      type: 'value',
+      name: '温度(°C)',
+      position: 'left',
+      axisLine: { show: true },
+    });
+    // 1: Volt
+    yAxis.push({
+      type: 'value',
+      name: '电压(V)',
+      position: 'right',
+      axisLine: { show: true },
+      splitLine: { show: false },
+    });
+    // 2: Humidity
+    yAxis.push({
+      type: 'value',
+      name: '湿度(%)',
+      position: 'right',
+      offset: 50,
+      axisLine: { show: true },
+      splitLine: { show: false },
+      max: 100,
+      min: 0,
+    });
+
+    STATUS_KEYS_CONFIG.forEach((config) => {
+      const val = dataMap[config.key];
+      const dataPoints = Array.isArray(val) ? val : val?.data || [];
+      if (dataPoints.length === 0) return;
+
+      let yAxisIndex = 0;
+      if (config.axis === 'volt') yAxisIndex = 1;
+      if (config.axis === 'humidity') yAxisIndex = 2;
+
+      series.push({
+        name: config.alias,
+        type: 'line',
+        showSymbol: false,
+        yAxisIndex: yAxisIndex,
+        data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+      });
+      legendData.push(config.alias);
+    });
+
+    setOptions({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+      },
+      legend: {
+        data: legendData,
+      },
+      grid: {
+        left: '3%',
+        right: '15%',
+        bottom: '3%',
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'time',
+        boundaryGap: false as any,
+      },
+      yAxis: yAxis,
+      series: series,
+    });
   }
 
   function mapEntityRow(row: any) {
