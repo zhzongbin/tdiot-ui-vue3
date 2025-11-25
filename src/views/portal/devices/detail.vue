@@ -35,6 +35,43 @@
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
+
+      <a-card title="服务端属性" :loading="serverAttributesLoading">
+        <template #extra>
+          <a-button type="link" @click="refreshAttributes">刷新</a-button>
+        </template>
+        <a-table
+          :columns="serverAttrColumns"
+          :dataSource="serverAttributeList"
+          :pagination="false"
+          size="small"
+          rowKey="key"
+          bordered
+        />
+      </a-card>
+
+      <a-card title="历史趋势" :loading="chartLoading">
+        <template #extra>
+          <div class="flex items-center gap-2">
+            <a-select
+              v-model:value="selectedKeys"
+              mode="multiple"
+              placeholder="选择数据指标"
+              style="min-width: 200px; max-width: 400px"
+              @change="handleChartFilterChange"
+              :maxTagCount="2"
+            >
+              <a-select-option v-for="key in telemetryKeys" :key="key" :value="key">{{ key }}</a-select-option>
+            </a-select>
+            <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleChartFilterChange">
+              <a-radio-button value="1h">1小时</a-radio-button>
+              <a-radio-button value="24h">24小时</a-radio-button>
+              <a-radio-button value="7d">7天</a-radio-button>
+            </a-radio-group>
+          </div>
+        </template>
+        <div ref="chartRef" style="width: 100%; height: 400px"></div>
+      </a-card>
     </div>
   </PageWrapper>
 </template>
@@ -54,10 +91,87 @@
   import { useTabs } from '/@/hooks/web/useTabs';
   import dayjs from 'dayjs';
   import { DEVICE_FIELDS } from '/@/views/portal/config/attributes';
+  import { getAttributesByScope, getTimeseriesKeys, getTimeseries } from '/@/api/tb/telemetry';
+  import { Scope } from '/@/enums/telemetryEnum';
+  import { useECharts } from '/@/hooks/web/useECharts';
+  import { Ref, computed } from 'vue';
 
   const { t } = useI18n();
   const detail = ref<any>({});
   const { setTitle } = useTabs();
+
+  // Server Attributes
+  const serverAttributesMap = ref<Record<string, any>>({});
+  const serverAttributesLoading = ref(false);
+
+  // 指定展示的字段列表
+  const TARGET_ATTR_KEYS = [
+    'DeviceNo',
+    'MQTT_CLIENT_ID',
+    'DeviceName',
+    'name',
+    'ProviceNo',
+    'StationNo',
+    'StationName',
+    'label',
+    '灾害类型',
+    'city',
+    'county',
+    'town',
+    'village',
+    '建设级别',
+    '建设年份',
+    'location',
+    'Longitude',
+    'Latitude',
+    'ower',
+    'manufacturer',
+    '监测类型',
+    'DeviceType',
+    'project',
+  ];
+
+  const serverAttrColumns = [
+    { title: '属性名', dataIndex: 'alias', key: 'alias', width: 150 },
+    { title: '属性键', dataIndex: 'key', key: 'key', width: 150 },
+    { title: '属性值', dataIndex: 'value', key: 'value' },
+    { title: '最后更新时间', dataIndex: 'lastUpdateTs', key: 'lastUpdateTs', width: 180 },
+  ];
+
+  const serverAttributeList = computed(() => {
+    return TARGET_ATTR_KEYS.map((key) => {
+      const fieldDef = DEVICE_FIELDS.fields.find((f) => f.key === key);
+      const alias = fieldDef?.alias || key;
+
+      // 优先从 serverAttributesMap 取（包含时间戳），如果是 Entity Field (name, label) 则从 detail 取
+      let value = serverAttributesMap.value[key]?.value;
+      let lastUpdateTs = serverAttributesMap.value[key]?.lastUpdateTs;
+
+      if (['name', 'label'].includes(key)) {
+        value = detail.value[key];
+        // Entity fields don't have update time in this context usually, or we use createdTime
+        lastUpdateTs = null;
+      } else if (value === undefined && detail.value[key] !== undefined) {
+        // Fallback to detail if not in server attributes (e.g. if it was loaded via entity query but not server scope query)
+        value = detail.value[key];
+      }
+
+      return {
+        key,
+        alias,
+        value: displayValue(value),
+        lastUpdateTs: lastUpdateTs ? dayjs(lastUpdateTs).format('YYYY-MM-DD HH:mm:ss') : '-',
+      };
+    });
+  });
+
+  // Telemetry
+  const chartRef = ref<HTMLDivElement | null>(null);
+  const { setOptions } = useECharts(chartRef as Ref<HTMLDivElement>);
+  const telemetryKeys = ref<string[]>([]);
+  const selectedKeys = ref<string[]>([]);
+  const timeRange = ref<string>('24h');
+  const chartLoading = ref(false);
 
   onMounted(async () => {
     const deviceId = router.currentRoute.value.params.deviceId as string;
@@ -87,7 +201,125 @@
     if (name) {
       await setTitle(name);
     }
+    refreshAttributes();
+    fetchTelemetryKeys();
   });
+
+  function refreshAttributes() {
+    fetchServerAttributes();
+  }
+
+  async function fetchServerAttributes() {
+    const deviceId = router.currentRoute.value.params.deviceId as string;
+    if (!deviceId) return;
+    serverAttributesLoading.value = true;
+    try {
+      const res = await getAttributesByScope({ id: deviceId, entityType: EntityType.DEVICE }, Scope.SERVER_SCOPE);
+      // Convert array to map for easier lookup
+      const map: Record<string, any> = {};
+      res.forEach((item) => {
+        if (item.key) map[item.key] = item;
+      });
+      serverAttributesMap.value = map;
+    } catch (e) {
+      console.error(e);
+    } finally {
+      serverAttributesLoading.value = false;
+    }
+  }
+
+  async function fetchTelemetryKeys() {
+    const deviceId = router.currentRoute.value.params.deviceId as string;
+    if (!deviceId) return;
+    try {
+      const keys = await getTimeseriesKeys({ id: deviceId, entityType: EntityType.DEVICE });
+      telemetryKeys.value = keys;
+      if (keys.length > 0) {
+        // Default select first few keys
+        selectedKeys.value = keys.slice(0, 3);
+        fetchChartData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function fetchChartData() {
+    const deviceId = router.currentRoute.value.params.deviceId as string;
+    if (!deviceId || selectedKeys.value.length === 0) {
+      setOptions({ series: [] });
+      return;
+    }
+
+    chartLoading.value = true;
+    try {
+      const now = dayjs().valueOf();
+      let startTs = now;
+      if (timeRange.value === '1h') startTs = now - 60 * 60 * 1000;
+      else if (timeRange.value === '24h') startTs = now - 24 * 60 * 60 * 1000;
+      else if (timeRange.value === '7d') startTs = now - 7 * 24 * 60 * 60 * 1000;
+
+      const res = await getTimeseries({
+        entityType: EntityType.DEVICE,
+        entityId: deviceId,
+        keys: selectedKeys.value.join(','),
+        startTs,
+        endTs: now,
+        limit: 5000,
+        orderBy: 'ASC',
+      });
+
+      const series: any[] = [];
+      const legendData: string[] = [];
+      const dataMap = res as any;
+
+      selectedKeys.value.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+
+        const seriesData = dataPoints.map((pt: any) => [pt.ts, pt.value]);
+        series.push({
+          name: key,
+          type: 'line',
+          showSymbol: false,
+          data: seriesData,
+        });
+        legendData.push(key);
+      });
+
+      setOptions({
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' },
+        },
+        legend: {
+          data: legendData,
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true,
+        },
+        xAxis: {
+          type: 'time',
+          boundaryGap: false as any,
+        },
+        yAxis: {
+          type: 'value',
+        },
+        series: series,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      chartLoading.value = false;
+    }
+  }
+
+  function handleChartFilterChange() {
+    fetchChartData();
+  }
 
   function mapEntityRow(row: any) {
     const latest = row.latest || {};
