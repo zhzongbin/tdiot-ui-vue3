@@ -233,10 +233,21 @@
     if (!deviceId) return;
     try {
       const keys = await getTimeseriesKeys({ id: deviceId, entityType: EntityType.DEVICE });
-      telemetryKeys.value = keys;
-      if (keys.length > 0) {
-        // Default select first few keys
-        selectedKeys.value = keys.slice(0, 3);
+      // Filter out metadata keys
+      const filteredKeys = keys.filter((k) => !['did', 'ts', 'entityId'].includes(k));
+      telemetryKeys.value = filteredKeys;
+
+      if (filteredKeys.length > 0) {
+        // Auto-select keys that match known patterns (QJ, LF, JS)
+        const autoSelected = filteredKeys.filter((k) => k.includes('QJ') || k.includes('LF') || k.includes('JS'));
+
+        // If no known patterns found, fallback to first few
+        if (autoSelected.length > 0) {
+          selectedKeys.value = autoSelected;
+        } else {
+          selectedKeys.value = filteredKeys.slice(0, 3);
+        }
+
         fetchChartData();
       }
     } catch (e) {
@@ -270,22 +281,125 @@
       });
 
       const series: any[] = [];
+      const yAxis: any[] = [];
       const legendData: string[] = [];
       const dataMap = res as any;
 
-      selectedKeys.value.forEach((key) => {
-        const val = dataMap[key];
-        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+      // Classify keys
+      const groups = {
+        QJ: [] as string[],
+        LF: [] as string[],
+        JS: [] as string[],
+        Other: [] as string[],
+      };
 
-        const seriesData = dataPoints.map((pt: any) => [pt.ts, pt.value]);
-        series.push({
-          name: key,
-          type: 'line',
-          showSymbol: false,
-          data: seriesData,
-        });
-        legendData.push(key);
+      selectedKeys.value.forEach((key) => {
+        if (key.includes('QJ')) groups.QJ.push(key);
+        else if (key.includes('LF')) groups.LF.push(key);
+        else if (key.includes('JS')) groups.JS.push(key);
+        else groups.Other.push(key);
       });
+
+      let yAxisIndexCounter = 0;
+
+      // 1. QJ
+      if (groups.QJ.length > 0) {
+        yAxis.push({
+          type: 'value',
+          name: 'QJ',
+          position: 'left',
+          axisLine: { show: true },
+          max: 'dataMax',
+          min: 'dataMin',
+        });
+        groups.QJ.forEach((key) => {
+          const val = dataMap[key];
+          const dataPoints = Array.isArray(val) ? val : val?.data || [];
+          series.push({
+            name: key,
+            type: 'line',
+            symbol: 'circle',
+            showSymbol: false,
+            yAxisIndex: yAxisIndexCounter,
+            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+          });
+          legendData.push(key);
+        });
+        yAxisIndexCounter++;
+      }
+
+      // 2. LF
+      if (groups.LF.length > 0) {
+        yAxis.push({
+          type: 'value',
+          name: 'LF',
+          position: 'right',
+          offset: 0,
+          axisLine: { show: true },
+          max: 'dataMax',
+          min: 'dataMin',
+          splitLine: { show: false },
+        });
+        groups.LF.forEach((key) => {
+          const val = dataMap[key];
+          const dataPoints = Array.isArray(val) ? val : val?.data || [];
+          series.push({
+            name: key,
+            type: 'line',
+            symbol: 'rect',
+            showSymbol: false,
+            yAxisIndex: yAxisIndexCounter,
+            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+          });
+          legendData.push(key);
+        });
+        yAxisIndexCounter++;
+      }
+
+      // 3. JS
+      if (groups.JS.length > 0) {
+        yAxis.push({
+          type: 'value',
+          name: 'JS',
+          position: 'right',
+          offset: groups.LF.length > 0 ? 50 : 0,
+          axisLine: { show: true },
+          splitLine: { show: false },
+        });
+        groups.JS.forEach((key) => {
+          const val = dataMap[key];
+          const dataPoints = Array.isArray(val) ? val : val?.data || [];
+          series.push({
+            name: key,
+            type: 'bar',
+            yAxisIndex: yAxisIndexCounter,
+            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+          });
+          legendData.push(key);
+        });
+        yAxisIndexCounter++;
+      }
+
+      // 4. Other (Default)
+      if (groups.Other.length > 0) {
+        if (yAxis.length === 0) {
+          yAxis.push({ type: 'value', position: 'left' });
+          yAxisIndexCounter++;
+        }
+
+        groups.Other.forEach((key) => {
+          const val = dataMap[key];
+          const dataPoints = Array.isArray(val) ? val : val?.data || [];
+          series.push({
+            name: key,
+            type: 'line',
+            yAxisIndex: 0, // Default to first axis
+            showSymbol: false,
+            data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+          });
+          legendData.push(key);
+        });
+      }
 
       setOptions({
         tooltip: {
@@ -297,7 +411,7 @@
         },
         grid: {
           left: '3%',
-          right: '4%',
+          right: groups.JS.length > 0 && groups.LF.length > 0 ? '15%' : '8%',
           bottom: '3%',
           containLabel: true,
         },
@@ -305,9 +419,7 @@
           type: 'time',
           boundaryGap: false as any,
         },
-        yAxis: {
-          type: 'value',
-        },
+        yAxis: yAxis,
         series: series,
       });
     } catch (e) {
