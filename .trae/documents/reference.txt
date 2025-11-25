@@ -1,0 +1,114 @@
+    var createEChartConfig = {
+        tooltip: {
+            trigger: 'axis'
+        },
+        title: {
+            left: 'center',
+            text: appsmith.store.sn || 'Default Title' // 使用默认标题防止 undefined
+        },
+        toolbox: {
+            feature: {
+                dataZoom: {
+                    yAxisIndex: 'none'
+                },
+                restore: {},
+                saveAsImage: {}
+            }
+        },
+        xAxis: {
+            type: 'time',
+            boundaryGap: false
+        },
+        yAxis: [],
+        dataZoom: [
+            {
+                type: 'inside',
+                start: 0,
+                end: 100
+            },
+            {
+                start: 0,
+                end: 100
+            }
+        ],
+        series: []
+    };
+
+    // 动态 Y 轴索引计数器
+    let yAxisIndexCounter = 0;
+
+    // 如果有 QJ 数据，添加 Y 轴和系列
+    if (getTeleTimeSeri.data.L1_QJ_1_X || getTeleTimeSeri.data.L1_QJ_1_Y) {
+        createEChartConfig.yAxis.push({
+            type: 'value',
+					max: 'dataMax',
+            name: 'QJ',
+            boundaryGap: [0, '100%']
+        });
+
+        if (getTeleTimeSeri.data.L1_QJ_1_X) {
+            createEChartConfig.series.push({
+                name: 'QJX',
+                type: 'line',
+                symbol: '0',
+                yAxisIndex: yAxisIndexCounter, // 使用动态 Y 轴索引
+                data: getTeleTimeSeri.data.L1_QJ_1_X.map(obj => [obj["ts"], Number(obj.value)])
+            });
+        }
+
+        if (getTeleTimeSeri.data.L1_QJ_1_Y) {
+            createEChartConfig.series.push({
+                name: 'QJY',
+                type: 'line',
+                symbol: '1',
+                yAxisIndex: yAxisIndexCounter, // 使用动态 Y 轴索引
+                data: getTeleTimeSeri.data.L1_QJ_1_Y.map(obj => [obj["ts"], Number(obj.value)])
+            });
+        }
+
+        yAxisIndexCounter++; // 递增 Y 轴索引
+    }
+
+    // 如果有 LF 数据，添加 Y 轴和系列
+    if (getTeleTimeSeri.data.L1_LF_1_value) {
+        createEChartConfig.yAxis.push({
+            type: 'value',
+					max: 'dataMax',
+            name: 'LF',
+					  offset:30,
+            boundaryGap: [0, '100%']
+        });
+
+        createEChartConfig.series.push({
+            name: 'LF',
+            type: 'line',
+            symbol: '1',
+            yAxisIndex: yAxisIndexCounter, // 使用动态 Y 轴索引
+            data: getTeleTimeSeri.data.L1_LF_1_value.map(obj => [obj["ts"], Number(obj.value)])
+        });
+
+        yAxisIndexCounter++; // 递增 Y 轴索引
+    }
+
+    // 如果有 JS 数据，添加 Y 轴和系列
+    if (getTeleTimeSeri.data.L1_JS_1_gX) {
+        createEChartConfig.yAxis.push({
+            type: 'value',
+            name: 'JS ',
+            boundaryGap: [0, '100%']
+        });
+
+        createEChartConfig.series.push({
+            name: 'JS_gX',
+            type: 'bar', // 使用柱状图
+            yAxisIndex: yAxisIndexCounter, // 使用动态 Y 轴索引
+            data: getTeleTimeSeri.data.L1_JS_1_gX.map(obj => [obj["ts"], Number(obj.value)])
+        });
+
+        yAxisIndexCounter++; // 递增 Y 轴索引
+    }
+
+
+    // 存储 ECharts 配置
+    storeValue('echart1', createEChartConfig);
+}
