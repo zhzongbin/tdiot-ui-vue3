@@ -111,9 +111,9 @@
   import { Scope } from '/@/enums/telemetryEnum';
   import { useECharts } from '/@/hooks/web/useECharts';
   import { Ref, computed } from 'vue';
-  import { DatePicker, Tabs, TabPane, Select, Radio } from 'ant-design-vue';
+  import { DatePicker, RangePicker, Tabs, TabPane, Select, Radio } from 'ant-design-vue';
 
-  const ARangePicker = DatePicker.RangePicker;
+  const ARangePicker = RangePicker;
   const ATabs = Tabs;
   const ATabPane = TabPane;
   const ASelect = Select;
