@@ -26,7 +26,12 @@
               <div class="text-xs text-gray-500 truncate">{{ desc }}</div>
             </div>
           </template>
-          <Input v-model:value="searchText" placeholder="搜索设备或监测点(回车搜索)" @pressEnter="onInputEnter">
+          <Input
+            ref="searchInputRef"
+            v-model:value="searchText"
+            placeholder="搜索设备或监测点(回车搜索)"
+            @pressEnter="onInputEnter"
+          >
             <template #suffix>
               <Icon
                 v-if="!searchLoading"
@@ -135,6 +140,8 @@
   const searchOptions = ref<any[]>([]);
   const searchLoading = ref(false);
 
+  const searchInputRef = ref();
+
   watch(searchText, () => {
     if (searchOptions.value.length > 0) {
       searchOptions.value = [];
@@ -195,7 +202,8 @@
         const latest = row.latest || {};
         const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
         return {
-          value: row.entityId?.id,
+          value: get('ENTITY_FIELD', 'name'), // Use name as value for display
+          id: row.entityId?.id,
           label: get('ENTITY_FIELD', 'name'),
           desc: get('ENTITY_FIELD', 'label'),
           type: 'DEVICE',
@@ -208,7 +216,8 @@
         const latest = row.latest || {};
         const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
         return {
-          value: row.entityId?.id,
+          value: get('ENTITY_FIELD', 'name'), // Use name as value for display
+          id: row.entityId?.id,
           label: get('ENTITY_FIELD', 'name'),
           desc: get('ENTITY_FIELD', 'label'),
           type: 'ASSET',
@@ -220,6 +229,12 @@
       searchOptions.value = [...devices, ...assets].filter(
         (x) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude),
       );
+      // Focus input to ensure dropdown shows
+      if (searchInputRef.value) {
+        setTimeout(() => {
+          searchInputRef.value.focus();
+        }, 100);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -227,9 +242,9 @@
     }
   };
 
-  const onSelect = (val: any) => {
-    console.log('onSelect triggered', val);
-    const target = searchOptions.value.find((item) => item.value === val);
+  const onSelect = (_val: any, option: any) => {
+    console.log('onSelect triggered', option);
+    const target = option;
     if (target && mapInstance && T.value && Number.isFinite(target.longitude) && Number.isFinite(target.latitude)) {
       console.log('Zooming to', target.longitude, target.latitude);
       mapInstance.centerAndZoom(new T.value.LngLat(target.longitude, target.latitude), 18);
