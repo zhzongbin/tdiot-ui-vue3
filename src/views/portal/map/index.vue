@@ -45,6 +45,7 @@
   import { EntityKeyType, EntityKeyValueType, FilterPredicateType, NumericOperation } from '/@/enums/queryEnum';
   import dayjs from 'dayjs';
   import { router } from '/@/router';
+  import { getCache, setCache } from '/@/utils/tdiot/cache';
 
   const { t } = useI18n();
 
@@ -181,6 +182,9 @@
     const minLat = Number(sw?.lat) || -90;
     const maxLng = Number(ne?.lng) || 180;
     const maxLat = Number(ne?.lat) || 90;
+    const cacheKey = `dev:${minLng.toFixed(3)}:${minLat.toFixed(3)}:${maxLng.toFixed(3)}:${maxLat.toFixed(3)}`;
+    const cached = getCache<any[]>('portal_map_devices', cacheKey);
+    if (Array.isArray(cached)) { renderMarkers(cached); return; }
     const keyFilters: any[] = [
       {
         key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Longitude' },
@@ -255,6 +259,7 @@
       pageIndex += 1;
       await new Promise((r) => setTimeout(r, 150));
     }
+    setCache('portal_map_devices', cacheKey, all, 24 * 60 * 60 * 1000);
     renderMarkers(all);
   }
 
@@ -263,6 +268,9 @@
     const token = resetToken ? ++loadToken : loadToken;
     let pageIndex = 0;
     const pageSize = 1000;
+    const cacheKey = `asset:list:${pageSize}`;
+    const cached = getCache<any[]>('portal_map_assets', cacheKey);
+    if (Array.isArray(cached)) { renderAssetMarkers(cached); return; }
     const all: any[] = [];
     for (;;) {
       const page = await findEntityDataByQuery({
@@ -294,6 +302,7 @@
       pageIndex += 1;
       await new Promise((r) => setTimeout(r, 150));
     }
+    setCache('portal_map_assets', cacheKey, all, 24 * 60 * 60 * 1000);
     renderAssetMarkers(all);
   }
 

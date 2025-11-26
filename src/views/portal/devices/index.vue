@@ -43,6 +43,7 @@
   import dayjs from 'dayjs';
   import { DEVICE_FIELDS } from '/@/views/portal/config/attributes';
   import { ExpExcelModal, jsonToSheetXlsx } from '/@/components/Excel';
+  import { getCache, setCache } from '/@/utils/tdiot/cache';
   import { useModal } from '/@/components/Modal';
   import {
     EntityKeyType,
@@ -240,7 +241,10 @@
       ],
       keyFilters: buildKeyFilters(param),
     };
-    const page = await findEntityDataByQuery(query);
+    const cacheKey = JSON.stringify(query);
+    const cachedPage = getCache<any>('portal_devices', cacheKey);
+    const page = cachedPage || (await findEntityDataByQuery(query));
+    if (!cachedPage) setCache('portal_devices', cacheKey, page, 24 * 60 * 60 * 1000);
     const mapped = page.data.map((row: any) => mapEntityRow(row));
     return { ...page, data: mapped };
   }
