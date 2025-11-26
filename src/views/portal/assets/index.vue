@@ -204,7 +204,7 @@
       latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
       keyFilters: buildKeyFilters(param),
     };
-    const cacheKey = JSON.stringify(query);
+    const cacheKey = JSON.stringify(query);//缓存逻辑
     const cachedPage = getCache<any>('portal_assets', cacheKey);
     const page = cachedPage || (await findEntityDataByQuery(query));
     if (!cachedPage) setCache('portal_assets', cacheKey, page, 24 * 60 * 60 * 1000);
