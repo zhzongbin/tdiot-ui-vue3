@@ -10,7 +10,9 @@
           :options="searchOptions"
           :filter-option="false"
           :default-active-first-option="false"
+          :open="searchOpen"
           @select="onSelect"
+          @dropdownVisibleChange="onDropdownVisibleChange"
         >
           <template #option="{ label, desc, type }">
             <div class="flex flex-col">
@@ -141,12 +143,20 @@
   const searchLoading = ref(false);
 
   const searchInputRef = ref();
+  const searchOpen = ref(false);
 
   watch(searchText, () => {
+    searchOpen.value = false;
     if (searchOptions.value.length > 0) {
       searchOptions.value = [];
     }
   });
+
+  const onDropdownVisibleChange = (open: boolean) => {
+    if (!open) {
+      searchOpen.value = false;
+    }
+  };
 
   const onInputEnter = () => {
     // Always trigger search on Enter if not selecting an option
@@ -229,6 +239,9 @@
       searchOptions.value = [...devices, ...assets].filter(
         (x) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude),
       );
+      if (searchOptions.value.length > 0) {
+        searchOpen.value = true;
+      }
       // Focus input to ensure dropdown shows
       if (searchInputRef.value) {
         setTimeout(() => {
@@ -243,6 +256,7 @@
   };
 
   const onSelect = (_val: any, option: any) => {
+    searchOpen.value = false;
     console.log('onSelect triggered', option);
     const target = option;
     if (target && mapInstance && T.value && Number.isFinite(target.longitude) && Number.isFinite(target.latitude)) {
