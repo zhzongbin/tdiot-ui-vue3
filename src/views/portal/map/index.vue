@@ -1,5 +1,5 @@
 <template>
-  <PageWrapper :title="t('routes.portal.map')">
+  <PageWrapper title="false">
     <div class="relative" style="height: 560px; width: 100%">
       <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
       <!-- Top Right Search -->

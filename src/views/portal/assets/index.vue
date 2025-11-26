@@ -1,5 +1,11 @@
 <template>
   <PageWrapper :title="t('routes.portal.assets')">
+    <template #headerTitle>
+      <span class="portal-title">
+        <Icon icon="ant-design:database-outlined" style="font-size: 18px" />
+        {{ t('routes.portal.assets') }}
+      </span>
+    </template>
     <BasicTable @register="registerTable">
       <template #tableTitle>
         <div class="space-x-2">
@@ -31,6 +37,22 @@
     name: 'PortalAssetsPage',
   };
 </script>
+<style lang="less" scoped>
+  .portal-title {
+    color: @primary-color;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  :deep(.ant-page-header-heading-title) {
+    color: @primary-color;
+  }
+  :deep(.ant-page-header) {
+    border-left: 3px solid @primary-color;
+    background: fade(@primary-color, 8%) !important;
+  }
+</style>
 <script lang="ts" setup>
   import { reactive, computed } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
