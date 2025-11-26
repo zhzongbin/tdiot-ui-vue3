@@ -1,18 +1,76 @@
 <template>
   <PageWrapper :title="t('routes.portal.map')">
-
     <div class="relative" style="height: 560px; width: 100%">
       <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
-      <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index: 9999">
-        <a-button size="small" :type="baseType === 'vec' ? 'primary' : 'default'" @click="applyBaseType('vec')"
-          >矢量</a-button
+      <!-- Top Right Search -->
+      <div class="absolute right-2 top-2 bg-white/90 rounded shadow p-1" style="z-index: 9999; width: 260px">
+        <Select
+          show-search
+          placeholder="搜索设备或监测点"
+          style="width: 100%"
+          :filter-option="false"
+          :not-found-content="searchLoading ? undefined : null"
+          :options="searchOptions"
+          @search="handleSearch"
+          @select="onSelect"
         >
-        <a-button size="small" :type="baseType === 'sat' ? 'primary' : 'default'" @click="applyBaseType('sat')"
-          >影像</a-button
-        >
-        <a-button size="small" :type="baseType === 'hybrid' ? 'primary' : 'default'" @click="applyBaseType('hybrid')"
-          >卫星混合</a-button
-        >
+          <template v-if="searchLoading" #notFoundContent>
+            <div class="p-2 text-center text-gray-400">搜索中...</div>
+          </template>
+          <template #option="{ label, desc, type }">
+            <div class="flex flex-col">
+              <div class="flex items-center gap-1">
+                <span
+                  class="text-xs px-1 rounded text-white"
+                  :class="type === 'DEVICE' ? 'bg-blue-500' : 'bg-orange-500'"
+                  >{{ type === 'DEVICE' ? '设备' : '监测点' }}</span
+                >
+                <span class="font-bold">{{ label }}</span>
+              </div>
+              <div class="text-xs text-gray-500 truncate">{{ desc }}</div>
+            </div>
+          </template>
+        </Select>
+      </div>
+
+      <!-- Bottom Left Map Type -->
+      <div class="absolute left-2 bottom-2" style="z-index: 9999">
+        <Popover placement="topLeft" trigger="click">
+          <template #content>
+            <div class="flex flex-col gap-1 min-w-[100px]">
+              <div
+                class="cursor-pointer px-2 py-1 hover:bg-gray-100 rounded flex items-center justify-between"
+                :class="{ 'text-blue-600 font-bold': baseType === 'vec' }"
+                @click="applyBaseType('vec')"
+              >
+                <span>矢量地图</span>
+                <Icon v-if="baseType === 'vec'" icon="ant-design:check-outlined" />
+              </div>
+              <div
+                class="cursor-pointer px-2 py-1 hover:bg-gray-100 rounded flex items-center justify-between"
+                :class="{ 'text-blue-600 font-bold': baseType === 'sat' }"
+                @click="applyBaseType('sat')"
+              >
+                <span>影像地图</span>
+                <Icon v-if="baseType === 'sat'" icon="ant-design:check-outlined" />
+              </div>
+              <div
+                class="cursor-pointer px-2 py-1 hover:bg-gray-100 rounded flex items-center justify-between"
+                :class="{ 'text-blue-600 font-bold': baseType === 'hybrid' }"
+                @click="applyBaseType('hybrid')"
+              >
+                <span>混合地图</span>
+                <Icon v-if="baseType === 'hybrid'" icon="ant-design:check-outlined" />
+              </div>
+            </div>
+          </template>
+          <div
+            class="bg-white/90 rounded shadow p-2 cursor-pointer hover:bg-gray-50 flex items-center justify-center"
+            title="切换地图底图"
+          >
+            <Icon icon="ion:layers-outline" size="24" />
+          </div>
+        </Popover>
       </div>
       <div v-if="tdtError" class="absolute inset-0 flex items-center justify-center">
         <div class="text-center space-y-3">
@@ -36,7 +94,9 @@
   };
 </script>
 <script lang="ts" setup>
-  import { ref, watchEffect, onMounted } from 'vue';
+  import { ref, watchEffect, onMounted, unref } from 'vue';
+  import { Select, Popover, List, Avatar } from 'ant-design-vue';
+  import { Icon } from '/@/components/Icon';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { useTianditu } from '/@/hooks/web/useTianditu';
@@ -62,6 +122,94 @@
   let currentMode: 'ASSET_LOW' | 'DEVICE_HIGH' | null = null;
   let loadToken = 0;
   const zoomThreshold = 17;
+
+  // Search
+  const searchOptions = ref<any[]>([]);
+  const searchLoading = ref(false);
+
+  const handleSearch = async (val: string) => {
+    if (!val) {
+      searchOptions.value = [];
+      return;
+    }
+    searchLoading.value = true;
+    try {
+      const serverAttrKeys = ['Longitude', 'Latitude', 'DeviceType', '监测类型', 'Stationname', '监测点名称'];
+      // Search Devices
+      const devicePage = await findEntityDataByQuery({
+        entityFilter: { type: 'entityType', entityType: EntityType.DEVICE },
+        entityFields: [
+          { type: 'ENTITY_FIELD', key: 'name' },
+          { type: 'ENTITY_FIELD', key: 'label' },
+        ],
+        pageLink: {
+          page: 0,
+          pageSize: 10,
+          textSearch: val,
+        },
+        latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
+      });
+      // Search Assets
+      const assetPage = await findEntityDataByQuery({
+        entityFilter: { type: 'entityType', entityType: EntityType.ASSET },
+        entityFields: [
+          { type: 'ENTITY_FIELD', key: 'name' },
+          { type: 'ENTITY_FIELD', key: 'label' },
+        ],
+        pageLink: {
+          page: 0,
+          pageSize: 10,
+          textSearch: val,
+        },
+        latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
+      });
+
+      const devices = devicePage.data.map((row: any) => {
+        const latest = row.latest || {};
+        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+        return {
+          value: row.entityId?.id,
+          label: get('ENTITY_FIELD', 'name'),
+          desc: get('ENTITY_FIELD', 'label'),
+          type: 'DEVICE',
+          longitude: Number(get('SERVER_ATTRIBUTE', 'Longitude')),
+          latitude: Number(get('SERVER_ATTRIBUTE', 'Latitude')),
+        };
+      });
+
+      const assets = assetPage.data.map((row: any) => {
+        const latest = row.latest || {};
+        const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
+        return {
+          value: row.entityId?.id,
+          label: get('ENTITY_FIELD', 'name'),
+          desc: get('ENTITY_FIELD', 'label'),
+          type: 'ASSET',
+          longitude: Number(get('SERVER_ATTRIBUTE', '经度')),
+          latitude: Number(get('SERVER_ATTRIBUTE', '纬度')),
+        };
+      });
+
+      searchOptions.value = [...devices, ...assets].filter(
+        (x) => Number.isFinite(x.longitude) && Number.isFinite(x.latitude),
+      );
+    } catch (e) {
+      console.error(e);
+    } finally {
+      searchLoading.value = false;
+    }
+  };
+
+  const onSelect = (val: any) => {
+    console.log('onSelect triggered', val);
+    const target = searchOptions.value.find((item) => item.value === val);
+    if (target && mapInstance && T.value && Number.isFinite(target.longitude) && Number.isFinite(target.latitude)) {
+      console.log('Zooming to', target.longitude, target.latitude);
+      mapInstance.centerAndZoom(new T.value.LngLat(target.longitude, target.latitude), 18);
+    } else {
+      console.warn('Target not found or invalid coordinates', target, mapInstance);
+    }
+  };
 
   watchEffect(() => {
     tdtError.value = tdtErrorRef.value === true;
@@ -184,7 +332,10 @@
     const maxLat = Number(ne?.lat) || 90;
     const cacheKey = `dev:${minLng.toFixed(3)}:${minLat.toFixed(3)}:${maxLng.toFixed(3)}:${maxLat.toFixed(3)}`;
     const cached = getCache<any[]>('portal_map_devices', cacheKey);
-    if (Array.isArray(cached)) { renderMarkers(cached); return; }
+    if (Array.isArray(cached)) {
+      renderMarkers(cached);
+      return;
+    }
     const keyFilters: any[] = [
       {
         key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'Longitude' },
@@ -270,7 +421,10 @@
     const pageSize = 1000;
     const cacheKey = `asset:list:${pageSize}`;
     const cached = getCache<any[]>('portal_map_assets', cacheKey);
-    if (Array.isArray(cached)) { renderAssetMarkers(cached); return; }
+    if (Array.isArray(cached)) {
+      renderAssetMarkers(cached);
+      return;
+    }
     const all: any[] = [];
     for (;;) {
       const page = await findEntityDataByQuery({
