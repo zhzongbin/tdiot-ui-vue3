@@ -153,7 +153,7 @@
     }
     searchLoading.value = true;
     try {
-      const serverAttrKeys = ['Longitude', 'Latitude', 'DeviceType', '监测类型', 'Stationname', '监测点名称'];
+      const serverAttrKeys = ['Longitude', 'Latitude', 'DeviceType', '监测类型', 'StationName', '监测点名称'];
       // Search Devices
       const devicePage = await findEntityDataByQuery({
         entityFilter: { type: 'entityType', entityType: EntityType.DEVICE },
@@ -165,6 +165,10 @@
           page: 0,
           pageSize: 50,
           textSearch: val,
+          sortOrder: {
+            key: { type: 'ENTITY_FIELD', key: 'name' },
+            direction: 'ASC',
+          },
         },
         latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
       });
@@ -179,6 +183,10 @@
           page: 0,
           pageSize: 50,
           textSearch: val,
+          sortOrder: {
+            key: { type: 'ENTITY_FIELD', key: 'name' },
+            direction: 'ASC',
+          },
         },
         latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
       });
