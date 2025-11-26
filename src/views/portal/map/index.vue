@@ -3,34 +3,41 @@
     <div class="relative" style="height: 560px; width: 100%">
       <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
       <!-- Top Right Search -->
-      <div class="absolute right-2 top-2 bg-white/90 rounded shadow p-1" style="z-index: 9999; width: 260px">
-        <Select
-          show-search
-          placeholder="搜索设备或监测点"
+      <div class="absolute right-2 top-2 bg-white/90 rounded shadow p-1" style="z-index: 9999; width: 300px">
+        <AutoComplete
+          v-model:value="searchText"
           style="width: 100%"
-          :filter-option="false"
-          :not-found-content="searchLoading ? undefined : null"
           :options="searchOptions"
-          @search="handleSearch"
+          :filter-option="false"
+          :default-active-first-option="false"
           @select="onSelect"
         >
-          <template v-if="searchLoading" #notFoundContent>
-            <div class="p-2 text-center text-gray-400">搜索中...</div>
-          </template>
           <template #option="{ label, desc, type }">
             <div class="flex flex-col">
               <div class="flex items-center gap-1">
                 <span
                   class="text-xs px-1 rounded text-white"
                   :class="type === 'DEVICE' ? 'bg-blue-500' : 'bg-orange-500'"
-                  >{{ type === 'DEVICE' ? '设备' : '监测点' }}</span
                 >
+                  {{ type === 'DEVICE' ? '设备' : '监测点' }}
+                </span>
                 <span class="font-bold">{{ label }}</span>
               </div>
               <div class="text-xs text-gray-500 truncate">{{ desc }}</div>
             </div>
           </template>
-        </Select>
+          <Input v-model:value="searchText" placeholder="搜索设备或监测点(回车搜索)" @pressEnter="onInputEnter">
+            <template #suffix>
+              <Icon
+                v-if="!searchLoading"
+                icon="ant-design:search-outlined"
+                class="cursor-pointer text-gray-400 hover:text-blue-500"
+                @click="handleSearch(searchText)"
+              />
+              <Icon v-else icon="ant-design:loading-outlined" class="animate-spin text-blue-500" />
+            </template>
+          </Input>
+        </AutoComplete>
       </div>
 
       <!-- Bottom Left Map Type -->
@@ -94,8 +101,8 @@
   };
 </script>
 <script lang="ts" setup>
-  import { ref, watchEffect, onMounted, unref } from 'vue';
-  import { Select, Popover, List, Avatar } from 'ant-design-vue';
+  import { ref, watchEffect, onMounted, unref, watch } from 'vue';
+  import { AutoComplete, Input, Popover } from 'ant-design-vue';
   import { Icon } from '/@/components/Icon';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
@@ -124,8 +131,20 @@
   const zoomThreshold = 17;
 
   // Search
+  const searchText = ref('');
   const searchOptions = ref<any[]>([]);
   const searchLoading = ref(false);
+
+  watch(searchText, () => {
+    if (searchOptions.value.length > 0) {
+      searchOptions.value = [];
+    }
+  });
+
+  const onInputEnter = () => {
+    // Always trigger search on Enter if not selecting an option
+    handleSearch(searchText.value);
+  };
 
   const handleSearch = async (val: string) => {
     if (!val) {
@@ -144,7 +163,7 @@
         ],
         pageLink: {
           page: 0,
-          pageSize: 10,
+          pageSize: 50,
           textSearch: val,
         },
         latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
@@ -158,7 +177,7 @@
         ],
         pageLink: {
           page: 0,
-          pageSize: 10,
+          pageSize: 50,
           textSearch: val,
         },
         latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
