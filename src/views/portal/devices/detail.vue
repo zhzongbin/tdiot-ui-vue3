@@ -51,21 +51,19 @@
       </a-card>
 
       <a-card title="历史趋势" :loading="chartLoading">
-        <template #extra>
-          <div class="flex items-center gap-2">
-            <a-range-picker
-              v-model:value="customTimeRange"
-              show-time
-              @change="handleCustomTimeChange"
-              style="width: 320px"
-            />
-            <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleTimeRangeChange">
-              <a-radio-button value="1h">1小时</a-radio-button>
-              <a-radio-button value="24h">24小时</a-radio-button>
-              <a-radio-button value="7d">7天</a-radio-button>
-            </a-radio-group>
-          </div>
-        </template>
+        <div class="mb-2 flex items-center gap-2 justify-end">
+          <RangePicker
+            v-model:value="customTimeRange"
+            show-time
+            @change="handleCustomTimeChange"
+            style="width: 320px"
+          />
+          <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleTimeRangeChange">
+            <a-radio-button value="1h">1小时</a-radio-button>
+            <a-radio-button value="24h">24小时</a-radio-button>
+            <a-radio-button value="7d">7天</a-radio-button>
+          </a-radio-group>
+        </div>
 
         <a-tabs v-model:activeKey="activeTabKey" @change="handleTabChange">
           <a-tab-pane key="monitoring" tab="监测数据">
@@ -111,15 +109,15 @@
   import { Scope } from '/@/enums/telemetryEnum';
   import { useECharts } from '/@/hooks/web/useECharts';
   import { Ref, computed } from 'vue';
-  import { DatePicker, RangePicker, Tabs, TabPane, Select, Radio } from 'ant-design-vue';
+  import { Tabs, TabPane, Select, Radio, DatePicker } from 'ant-design-vue';
 
-  const ARangePicker = RangePicker;
   const ATabs = Tabs;
   const ATabPane = TabPane;
   const ASelect = Select;
   const ASelectOption = Select.Option;
   const ARadioGroup = Radio.Group;
   const ARadioButton = Radio.Button;
+  const RangePicker = DatePicker.RangePicker;
 
   const { t } = useI18n();
   const detail = ref<any>({});
