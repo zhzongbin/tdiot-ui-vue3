@@ -6,31 +6,33 @@
       </div>
       <a-card :title="t('routes.portal.devices')">
         <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('basic')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
+          <a-descriptions-item v-for="key in groupOrder('basic')" :key="key" :label="getFieldAlias(key)">
+            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
       <a-card :title="DEVICE_FIELDS.groups.device.title">
         <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('device')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
+          <a-descriptions-item v-for="key in groupOrder('device')" :key="key" :label="getFieldAlias(key)">
+            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
       <a-card :title="DEVICE_FIELDS.groups.site.title">
         <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('site')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
+          <a-descriptions-item v-for="key in groupOrder('site')" :key="key" :label="getFieldAlias(key)">
+            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
           </a-descriptions-item>
         </a-descriptions>
       </a-card>
       <a-card :title="DEVICE_FIELDS.groups.geo.title">
         <a-descriptions :column="2" bordered>
-          <a-descriptions-item :label="alias('Longitude')">
+          <a-descriptions-item :label="getFieldAlias('Longitude')">
+            {{ getFieldAlias('Longitude') }}: {{ displayValue(detail['Longitude']) }}
             <a @click="openMap(detail['Longitude'], detail['Latitude'])">{{ displayValue(detail['Longitude']) }}</a>
           </a-descriptions-item>
-          <a-descriptions-item :label="alias('Latitude')">
+          <a-descriptions-item :label="getFieldAlias('Latitude')">
+            {{ getFieldAlias('Latitude') }}: {{ displayValue(detail['Latitude']) }}
             <a @click="openMap(detail['Longitude'], detail['Latitude'])">{{ displayValue(detail['Latitude']) }}</a>
           </a-descriptions-item>
         </a-descriptions>
@@ -616,7 +618,7 @@
     return entity;
   }
 
-  function alias(key: string) {
+  function getFieldAlias(key: string) {
     const f = DEVICE_FIELDS.fields.find((x) => x.key === key);
     return f?.alias || key;
   }
