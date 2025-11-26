@@ -1,12 +1,6 @@
 <template>
   <PageWrapper :title="t('routes.portal.map')">
-    <div class="flex items-center gap-3 mb-3">
-      <a-select v-model:value="entityType" style="width: 160px" @change="reload">
-        <a-select-option value="DEVICE">设备</a-select-option>
-        <a-select-option value="ASSET">资产</a-select-option>
-      </a-select>
-      <a-button type="primary" @click="reload">刷新</a-button>
-    </div>
+
     <div class="relative" style="height: 560px; width: 100%">
       <div id="portal-tdt-map" style="height: 100%; width: 100%"></div>
       <div class="absolute right-2 top-2 bg-white/80 rounded shadow px-1 py-1 flex gap-1" style="z-index: 9999">
