@@ -655,6 +655,13 @@
     showIndexColumn: false,
     pagination: { pageSize: 10 },
     canResize: false,
+    rowKey: (record) => record.id.id,
+    fetchSetting: {
+      pageField: 'page',
+      sizeField: 'pageSize',
+      listField: 'items',
+      totalField: 'total',
+    },
   });
 
   function getAlarmColumns(): BasicColumn[] {
@@ -700,8 +707,23 @@
   async function fetchAlarms(params: any) {
     const deviceId = router.currentRoute.value.params.deviceId as string;
     if (!deviceId) return { items: [], total: 0 };
-    const res = await getAlarmInfoByEntity(params, EntityType.DEVICE, deviceId);
-    return { items: res.data, total: res.totalElements };
+
+    // BasicTable uses 1-based page index, but API expects 0-based
+    const newParams = {
+      ...params,
+      page: params.page > 0 ? params.page - 1 : 0,
+      sortProperty: params.sortProperty || 'createdTime',
+      sortOrder: params.sortOrder || 'DESC',
+      statusList: ['ACTIVE'],
+    };
+
+    try {
+      const res = await getAlarmInfoByEntity(newParams, EntityType.DEVICE, deviceId);
+      return { items: res.data, total: res.totalElements };
+    } catch (error) {
+      console.error('fetchAlarms error:', error);
+      return { items: [], total: 0 };
+    }
   }
 
   async function goRelatedAssets() {
