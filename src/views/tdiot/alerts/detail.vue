@@ -1,10 +1,10 @@
 <template>
   <BasicDrawer v-bind="$attrs" @register="registerDrawer" title="告警详情" width="50%">
     <div class="p-4">
-      <Description @register="registerDesc" />
+      <Description @register="registerDesc" :data="currentAlarm" />
       <div class="mt-4">
         <div class="mb-2 font-bold">{{ t('tdiot.alerts.detail.details') }}:</div>
-        <CodeEditor v-model:value="detailsJson" mode="application/json" readonly style="height: 300px" />
+        <CodeEditor v-model:value="detailsJson" :mode="MODE.JSON" readonly style="height: 300px" />
       </div>
       <div class="mt-6 flex justify-end gap-4">
         <a-button type="primary" danger v-if="showAck" @click="handleAck" :loading="loading">
@@ -22,7 +22,7 @@
   import { ref, computed, unref } from 'vue';
   import { BasicDrawer, useDrawerInner } from '/@/components/Drawer';
   import { Description, useDescription } from '/@/components/Description';
-  import { CodeEditor } from '/@/components/CodeEditor';
+  import { CodeEditor, MODE } from '/@/components/CodeEditor';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { ackAlarm, clearAlarm } from '/@/api/tb/alarm';
   import { useMessage } from '/@/hooks/web/useMessage';
