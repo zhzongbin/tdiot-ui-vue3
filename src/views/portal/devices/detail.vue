@@ -4,39 +4,27 @@
       <div class="flex gap-2">
         <a-button type="primary" @click="goRelatedAssets">查看所属地灾点</a-button>
       </div>
-      <a-card :title="t('routes.portal.devices')">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('basic')" :key="key" :label="getFieldAlias(key)">
-            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="DEVICE_FIELDS.groups.device.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('device')" :key="key" :label="getFieldAlias(key)">
-            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="DEVICE_FIELDS.groups.site.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('site')" :key="key" :label="getFieldAlias(key)">
-            {{ getFieldAlias(key) }}: {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="DEVICE_FIELDS.groups.geo.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item :label="getFieldAlias('Longitude')">
-            {{ getFieldAlias('Longitude') }}: {{ displayValue(detail['Longitude']) }}
-            <a @click="openMap(detail['Longitude'], detail['Latitude'])">{{ displayValue(detail['Longitude']) }}</a>
-          </a-descriptions-item>
-          <a-descriptions-item :label="getFieldAlias('Latitude')">
-            {{ getFieldAlias('Latitude') }}: {{ displayValue(detail['Latitude']) }}
-            <a @click="openMap(detail['Longitude'], detail['Latitude'])">{{ displayValue(detail['Latitude']) }}</a>
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <template v-for="(group, groupKey) in DEVICE_FIELDS.groups" :key="groupKey">
+          <a-card :title="group.title" size="small" :bordered="false" class="shadow-sm">
+            <div class="grid grid-cols-2 gap-y-2 gap-x-4">
+              <div v-for="key in group.order" :key="key" class="flex flex-col">
+                <span class="text-gray-500 text-xs">{{ getFieldAlias(key) }}</span>
+                <span class="font-medium text-sm truncate" :title="displayValue(detail[key])">
+                  <template v-if="['Longitude', 'Latitude'].includes(key)">
+                    <a @click="openMap(detail['Longitude'], detail['Latitude'])" class="text-blue-600 hover:underline">
+                      {{ displayValue(detail[key]) }}
+                    </a>
+                  </template>
+                  <template v-else>
+                    {{ displayValue(detail[key]) || '-' }}
+                  </template>
+                </span>
+              </div>
+            </div>
+          </a-card>
+        </template>
+      </div>
 
       <a-card title="服务端属性" :loading="serverAttributesLoading">
         <template #extra>
@@ -54,6 +42,11 @@
 
       <a-card title="历史趋势" :loading="chartLoading">
         <div class="mb-2 flex items-center gap-2 justify-end">
+          <a-select v-model:value="aggregation" style="width: 120px" @change="fetchChartData">
+            <a-select-option v-for="opt in AGGREGATION_OPTIONS" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </a-select-option>
+          </a-select>
           <RangePicker
             v-model:value="customTimeRange"
             show-time
@@ -88,6 +81,10 @@
           </a-tab-pane>
         </a-tabs>
       </a-card>
+
+      <a-card title="告警列表" :loading="false">
+        <BasicTable @register="registerAlarmTable" />
+      </a-card>
     </div>
   </PageWrapper>
 </template>
@@ -110,8 +107,11 @@
   import { getAttributesByScope, getTimeseriesKeys, getTimeseries } from '/@/api/tb/telemetry';
   import { Scope } from '/@/enums/telemetryEnum';
   import { useECharts } from '/@/hooks/web/useECharts';
-  import { Ref, computed } from 'vue';
-  import { Tabs, TabPane, Select, Radio, DatePicker } from 'ant-design-vue';
+  import { Ref, computed, h } from 'vue';
+  import { Tabs, TabPane, Select, Radio, DatePicker, Tag } from 'ant-design-vue';
+  import { getAlarmInfoByEntity } from '/@/api/tb/alarm';
+  import { AlarmSeverity } from '/@/enums/alarmEnum';
+  import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
 
   const ATabs = Tabs;
   const ATabPane = TabPane;
@@ -203,6 +203,16 @@
   const timeRange = ref<string>('24h');
   const customTimeRange = ref<[Dayjs, Dayjs] | undefined>(undefined);
   const chartLoading = ref(false);
+  const aggregation = ref<string>('NONE');
+
+  const AGGREGATION_OPTIONS = [
+    { label: '无聚合', value: 'NONE' },
+    { label: '平均值', value: 'AVG' },
+    { label: '最大值', value: 'MAX' },
+    { label: '最小值', value: 'MIN' },
+    { label: '求和', value: 'SUM' },
+    { label: '计数', value: 'COUNT' },
+  ];
 
   // Status Keys Configuration
   const STATUS_KEYS_CONFIG = [
@@ -363,6 +373,7 @@
         endTs,
         limit: 5000,
         orderBy: 'ASC',
+        agg: aggregation.value as any,
       });
 
       const dataMap = res as any;
@@ -633,6 +644,64 @@
   function openMap(lon?: any, lat?: any) {
     if (!lon || !lat) return;
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'DEVICE' } });
+  }
+
+  const [registerAlarmTable] = useTable({
+    api: fetchAlarms,
+    columns: getAlarmColumns(),
+    useSearchForm: false,
+    showTableSetting: false,
+    bordered: true,
+    showIndexColumn: false,
+    pagination: { pageSize: 10 },
+    canResize: false,
+  });
+
+  function getAlarmColumns(): BasicColumn[] {
+    return [
+      {
+        title: '严重程度',
+        dataIndex: 'severity',
+        width: 100,
+        customRender: ({ record }) => {
+          const color = getSeverityColor(record.severity);
+          return h(Tag, { color }, () => record.severity);
+        },
+      },
+      { title: '名称', dataIndex: 'name', width: 200 },
+      { title: '来源', dataIndex: 'originatorName', width: 150 },
+      {
+        title: '时间',
+        dataIndex: 'createdTime',
+        width: 180,
+        format: (text) => (text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '-'),
+      },
+      { title: '状态', dataIndex: 'status', width: 120 },
+    ];
+  }
+
+  function getSeverityColor(severity: AlarmSeverity) {
+    switch (severity) {
+      case AlarmSeverity.CRITICAL:
+        return 'red';
+      case AlarmSeverity.MAJOR:
+        return 'orange';
+      case AlarmSeverity.MINOR:
+        return 'gold';
+      case AlarmSeverity.WARNING:
+        return 'blue';
+      case AlarmSeverity.INDETERMINATE:
+        return 'purple';
+      default:
+        return 'default';
+    }
+  }
+
+  async function fetchAlarms(params: any) {
+    const deviceId = router.currentRoute.value.params.deviceId as string;
+    if (!deviceId) return { items: [], total: 0 };
+    const res = await getAlarmInfoByEntity(params, EntityType.DEVICE, deviceId);
+    return { items: res.data, total: res.totalElements };
   }
 
   async function goRelatedAssets() {
