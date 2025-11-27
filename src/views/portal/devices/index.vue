@@ -32,7 +32,7 @@
   };
 </script>
 <script lang="ts" setup>
-  import { reactive, computed, ref } from 'vue';
+  import { reactive, computed, ref, h } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
@@ -177,10 +177,50 @@
         dataIndex: key,
         key,
         align: 'left',
+        width: 150, // Default width
       };
-      if (key === 'lastActivityTime') {
-        col.format = (val: any) => (val ? dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss') : '');
+      if (key === 'name') {
+        col.width = 200;
+        col.customRender = ({ record }) => {
+          return h(
+            'a',
+            {
+              class: 'font-bold text-blue-600 hover:underline',
+              onClick: (e: Event) => {
+                e.stopPropagation();
+                router.push(`/portal/devices/${record.entityId.id}`);
+              },
+            },
+            record.name,
+          );
+        };
       }
+      if (key === 'active') {
+        col.align = 'center';
+        col.width = 100;
+        col.customRender = ({ record }) => {
+          const isActive = record.active;
+          return h(
+            'span',
+            {
+              style: {
+                color: isActive ? '#52c41a' : '#f5222d',
+                fontWeight: 'bold',
+              },
+            },
+            isActive ? '在线' : '离线',
+          );
+        };
+      }
+      if (key === 'lastActivityTime' || key === 'createdTime') {
+        col.align = 'center';
+        col.width = 180;
+        col.format = (val: any) => (val ? dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss') : '-');
+      }
+      // Adjust widths for specific columns
+      if (['DeviceNo', 'StationNo', 'ProviceNo'].includes(key)) col.width = 120;
+      if (['StationName', 'project', 'ower'].includes(key)) col.width = 180;
+
       cols.push(col);
     });
     return cols;

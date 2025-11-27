@@ -54,7 +54,7 @@
   }
 </style>
 <script lang="ts" setup>
-  import { reactive, computed } from 'vue';
+  import { reactive, computed, h } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
@@ -196,10 +196,31 @@
         dataIndex: key,
         key,
         align: 'left',
+        width: 150, // Default width
       };
+      if (key === 'name') {
+        col.width = 200;
+        col.customRender = ({ record }) => {
+          return h(
+            'a',
+            {
+              class: 'font-bold text-blue-600 hover:underline',
+              onClick: (e: Event) => {
+                e.stopPropagation();
+                router.push(`/portal/assets/${record.entityId.id}`);
+              },
+            },
+            record.name,
+          );
+        };
+      }
       if (key === 'lastActivityTime') {
         col.format = (val: any) => (val ? dayjs(Number(val)).format('YYYY-MM-DD HH:mm:ss') : '');
       }
+      // Adjust widths for specific columns
+      if (['省级编号', '监测点编号', 'construction', 'geo'].includes(key)) col.width = 120;
+      if (['监测点名称', '建设项目', 'relateYL'].includes(key)) col.width = 180;
+
       cols.push(col);
     });
     return cols;
@@ -226,7 +247,7 @@
       latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
       keyFilters: buildKeyFilters(param),
     };
-    const cacheKey = JSON.stringify(query);//缓存逻辑
+    const cacheKey = JSON.stringify(query); //缓存逻辑
     const cachedPage = getCache<any>('portal_assets', cacheKey);
     const page = cachedPage || (await findEntityDataByQuery(query));
     if (!cachedPage) setCache('portal_assets', cacheKey, page, 24 * 60 * 60 * 1000);
