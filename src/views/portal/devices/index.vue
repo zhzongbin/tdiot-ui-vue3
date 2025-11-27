@@ -168,16 +168,19 @@
 
   function buildColumns(): BasicColumn[] {
     const cols: BasicColumn[] = [];
-    const visibleFields = DEVICE_FIELDS.fields.filter((f) => f.visible);
-    const ordered = DEVICE_FIELDS.order.filter((k) => visibleFields.find((f) => f.key === k));
-    const aliasMap = Object.fromEntries(visibleFields.map((f) => [f.key, f.alias || f.key]));
-    ordered.forEach((key) => {
+    const fieldMap = new Map(DEVICE_FIELDS.fields.map((f) => [f.key, f]));
+
+    DEVICE_FIELDS.order.forEach((key) => {
+      const field = fieldMap.get(key);
+      if (!field) return;
+
       const col: BasicColumn = {
-        title: aliasMap[key] || key,
+        title: field.alias || key,
         dataIndex: key,
         key,
         align: 'left',
         width: 150, // Default width
+        defaultHidden: !field.visible,
       };
       if (key === 'name') {
         col.width = 200;

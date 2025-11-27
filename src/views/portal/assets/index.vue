@@ -187,16 +187,19 @@
 
   function buildColumns(): BasicColumn[] {
     const cols: BasicColumn[] = [];
-    const visibleFields = ASSET_FIELDS.fields.filter((f) => f.visible);
-    const ordered = ASSET_FIELDS.order.filter((k) => visibleFields.find((f) => f.key === k));
-    const aliasMap = Object.fromEntries(visibleFields.map((f) => [f.key, f.alias || f.key]));
-    ordered.forEach((key) => {
+    const fieldMap = new Map(ASSET_FIELDS.fields.map((f) => [f.key, f]));
+
+    ASSET_FIELDS.order.forEach((key) => {
+      const field = fieldMap.get(key);
+      if (!field) return;
+
       const col: BasicColumn = {
-        title: aliasMap[key] || key,
+        title: field.alias || key,
         dataIndex: key,
         key,
         align: 'left',
         width: 150, // Default width
+        defaultHidden: !field.visible,
       };
       if (key === 'name') {
         col.width = 200;
