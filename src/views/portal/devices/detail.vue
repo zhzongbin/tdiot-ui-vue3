@@ -83,9 +83,21 @@
       </a-card>
 
       <a-card title="告警列表" :loading="false">
-        <BasicTable @register="registerAlarmTable" />
+        <BasicTable @register="registerAlarmTable">
+          <template #action="{ record }">
+            <TableAction
+              :actions="[
+                {
+                  label: '详情',
+                  onClick: openAlarmDetail.bind(null, record),
+                },
+              ]"
+            />
+          </template>
+        </BasicTable>
       </a-card>
     </div>
+    <AlarmDetailDrawer @register="registerDrawer" @success="handleAlarmActionSuccess" />
   </PageWrapper>
 </template>
 <script lang="ts">
@@ -111,7 +123,9 @@
   import { Tabs, TabPane, Select, Radio, DatePicker, Tag } from 'ant-design-vue';
   import { getAlarmInfoByEntity } from '/@/api/tb/alarm';
   import { AlarmSeverity } from '/@/enums/alarmEnum';
-  import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
+  import { BasicTable, useTable, BasicColumn, TableAction } from '/@/components/Table';
+  import { useDrawer } from '/@/components/Drawer';
+  import AlarmDetailDrawer from '/@/views/tdiot/alerts/detail.vue';
 
   const ATabs = Tabs;
   const ATabPane = TabPane;
@@ -646,7 +660,9 @@
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'DEVICE' } });
   }
 
-  const [registerAlarmTable] = useTable({
+  const [registerDrawer, { openDrawer }] = useDrawer();
+
+  const [registerAlarmTable, { reload: reloadAlarms }] = useTable({
     api: fetchAlarms,
     columns: getAlarmColumns(),
     useSearchForm: false,
@@ -662,7 +678,21 @@
       listField: 'items',
       totalField: 'total',
     },
+    actionColumn: {
+      width: 100,
+      title: '操作',
+      dataIndex: 'action',
+      slots: { customRender: 'action' },
+    },
   });
+
+  function openAlarmDetail(record: any) {
+    openDrawer(true, record);
+  }
+
+  function handleAlarmActionSuccess() {
+    reloadAlarms();
+  }
 
   function getAlarmColumns(): BasicColumn[] {
     return [
