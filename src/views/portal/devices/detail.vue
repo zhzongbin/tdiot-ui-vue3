@@ -82,8 +82,19 @@
         </a-tabs>
       </a-card>
 
-      <a-card title="告警列表" :loading="false">
-        <BasicTable @register="registerAlarmTable">
+      <a-card :loading="false" :bordered="false">
+        <BasicTable @register="registerAlarmTable" title="告警列表">
+          <template #toolbar>
+            <div class="flex items-center">
+              <span class="mr-2">状态筛选:</span>
+              <Radio.Group v-model:value="alarmStatus" button-style="solid" @change="handleAlarmStatusChange">
+                <Radio.Button value="ACTIVE">激活</Radio.Button>
+                <Radio.Button value="CLEARED">已清除</Radio.Button>
+                <Radio.Button value="ACK">已确认</Radio.Button>
+                <Radio.Button value="ANY">全部</Radio.Button>
+              </Radio.Group>
+            </div>
+          </template>
           <template #action="{ record }">
             <TableAction
               :actions="[
@@ -131,8 +142,6 @@
   const ATabPane = TabPane;
   const ASelect = Select;
   const ASelectOption = Select.Option;
-  const ARadioGroup = Radio.Group;
-  const ARadioButton = Radio.Button;
   const RangePicker = DatePicker.RangePicker;
 
   const { t } = useI18n();
@@ -660,6 +669,8 @@
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'DEVICE' } });
   }
 
+  const alarmStatus = ref('ACTIVE');
+
   const [registerDrawer, { openDrawer }] = useDrawer();
 
   const [registerAlarmTable, { reload: reloadAlarms }] = useTable({
@@ -685,6 +696,11 @@
       slots: { customRender: 'action' },
     },
   });
+
+  function handleAlarmStatusChange() {
+    console.log('handleAlarmStatusChange:', alarmStatus.value);
+    reloadAlarms({ page: 1 });
+  }
 
   function openAlarmDetail(record: any) {
     openDrawer(true, record);
@@ -738,13 +754,16 @@
     const deviceId = router.currentRoute.value.params.deviceId as string;
     if (!deviceId) return { items: [], total: 0 };
 
+    const statusList = alarmStatus.value === 'ANY' ? [] : [alarmStatus.value];
+    console.log('fetchAlarms statusList:', statusList);
+
     // BasicTable uses 1-based page index, but API expects 0-based
     const newParams = {
       ...params,
       page: params.page > 0 ? params.page - 1 : 0,
       sortProperty: params.sortProperty || 'createdTime',
       sortOrder: params.sortOrder || 'DESC',
-      statusList: ['ACTIVE'],
+      statusList: statusList,
     };
 
     try {
