@@ -23,7 +23,7 @@
         </a-space>
       </template>
     </BasicTable>
-    <ExpExcelModal @register="registerExportModal" @success="handleExport" />
+    <ExpExcelModal @register="registerExportModal" @success="handleExport" :showExportSelect="true" />
   </PageWrapper>
 </template>
 <script lang="ts">
@@ -42,7 +42,7 @@
   import { router } from '/@/router';
   import dayjs from 'dayjs';
   import { DEVICE_FIELDS } from '/@/views/portal/config/attributes';
-  import { ExpExcelModal, jsonToSheetXlsx } from '/@/components/Excel';
+  import { ExpExcelModal, aoaToSheetXlsx } from '/@/components/Excel';
   import { getCache, setCache } from '/@/utils/tdiot/cache';
   import { useModal } from '/@/components/Modal';
   import {
@@ -107,64 +107,65 @@
     ],
   };
 
-  const [registerTable, { reload, setTableData, getSelectRows, getColumns, getDataSource }] = useTable({
-    rowKey: (record) => record.entityId?.id,
-    api: (arg) => fetchDevices(arg),
-    columns: tableColumns,
-    actionColumn: actionColumn,
-    showTableSetting: true,
-    useSearchForm: true,
-    showSelectionBar: true,
-    canResize: true,
-    clickToRowSelect: false,
-    defSort: { sortProperty: 'createdTime', sortOrder: 'DESC' },
-    formConfig: {
-      layout: 'inline',
-      showResetButton: true,
-      showSubmitButton: true,
-      baseColProps: { lg: 6, md: 8, sm: 12 },
-      schemas: [
-        {
-          label: '状态',
-          field: 'active',
-          component: 'Select',
-          defaultValue: undefined,
-          componentProps: {
-            allowClear: true,
-            options: [
-              { label: '全部', value: undefined },
-              { label: '在线', value: true },
-              { label: '离线', value: false },
-            ],
+  const [registerTable, { reload, setTableData, getSelectRows, getColumns, getDataSource, getPagination, getForm }] =
+    useTable({
+      rowKey: (record) => record.entityId?.id,
+      api: (arg) => fetchDevices(arg),
+      columns: tableColumns,
+      actionColumn: actionColumn,
+      showTableSetting: true,
+      useSearchForm: true,
+      showSelectionBar: true,
+      canResize: true,
+      clickToRowSelect: false,
+      defSort: { sortProperty: 'createdTime', sortOrder: 'DESC' },
+      formConfig: {
+        layout: 'inline',
+        showResetButton: true,
+        showSubmitButton: true,
+        baseColProps: { lg: 6, md: 8, sm: 12 },
+        schemas: [
+          {
+            label: '状态',
+            field: 'active',
+            component: 'Select',
+            defaultValue: undefined,
+            componentProps: {
+              allowClear: true,
+              options: [
+                { label: '全部', value: undefined },
+                { label: '在线', value: true },
+                { label: '离线', value: false },
+              ],
+            },
           },
-        },
-        {
-          label: '类型',
-          field: 'type',
-          component: 'Input',
-          componentProps: { allowClear: true, placeholder: '设备类型' },
-        },
-        {
-          label: 'DeviceType',
-          field: 'deviceType',
-          component: 'Input',
-          componentProps: { allowClear: true, placeholder: '设备厂商类型' },
-        },
-        {
-          label: '所属资产',
-          field: 'assetId',
-          component: 'Input',
-          componentProps: { allowClear: true, placeholder: '资产ID（支持从资产详情跳转）' },
-        },
-        {
-          label: '创建时间',
-          field: 'createdRange',
-          component: 'RangePicker',
-          componentProps: { allowClear: true, showTime: true },
-        },
-      ],
-    },
-  });
+          {
+            label: '类型',
+            field: 'type',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '设备类型' },
+          },
+          {
+            label: 'DeviceType',
+            field: 'deviceType',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '设备厂商类型' },
+          },
+          {
+            label: '所属资产',
+            field: 'assetId',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '资产ID（支持从资产详情跳转）' },
+          },
+          {
+            label: '创建时间',
+            field: 'createdRange',
+            component: 'RangePicker',
+            componentProps: { allowClear: true, showTime: true },
+          },
+        ],
+      },
+    });
 
   function buildColumns(): BasicColumn[] {
     const cols: BasicColumn[] = [];
@@ -385,17 +386,41 @@
   function openExport() {
     openExportModal(true, {});
   }
-  function handleExport({ filename, bookType }: { filename: string; bookType: string }) {
-    const rows = getSelectRows() || [];
-    const data = rows.length ? rows : getDataSource();
+  async function handleExport({
+    filename,
+    bookType,
+    exportScope,
+  }: {
+    filename: string;
+    bookType: string;
+    exportScope?: 'current' | 'all';
+  }) {
+    let data: any[] = [];
+    if (exportScope === 'all') {
+      const pagination = getPagination() as any;
+      const total = pagination?.total || 0;
+      const formValues = getForm().getFieldsValue();
+      const res = await fetchDevices({
+        page: 0,
+        pageSize: total || 10000,
+        ...formValues,
+      });
+      data = res.data;
+    } else {
+      const rows = getSelectRows() || [];
+      data = rows.length ? rows : getDataSource();
+    }
+
     const columns = getColumns({ ignoreIndex: true });
-    const header = columns.map((c) => c.title as string);
-    const keys = columns.map((c) => (c.dataIndex as string) || '');
+    // Fix: Filter out columns without dataIndex or that are action columns
+    const validColumns = columns.filter((c) => (c.dataIndex || c.key) && c.key !== 'action');
+
+    const header = validColumns.map((c) => c.title as string);
+    const keys = validColumns.map((c) => (c.dataIndex || c.key) as string);
+
     const arr = data.map((r: any) => {
-      const o: any = {};
-      keys.forEach((k, i) => (o[header[i]] = r[k]));
-      return o;
+      return keys.map((k) => r[k]);
     });
-    jsonToSheetXlsx({ data: arr, header, filename, write2excelOpts: { bookType } as any });
+    aoaToSheetXlsx({ data: arr, header, filename, write2excelOpts: { bookType } as any });
   }
 </script>

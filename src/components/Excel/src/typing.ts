@@ -24,4 +24,5 @@ export interface AoAToSheet<T = any> {
 export interface ExportModalResult {
   filename: string;
   bookType: BookType;
+  exportScope?: 'current' | 'all';
 }

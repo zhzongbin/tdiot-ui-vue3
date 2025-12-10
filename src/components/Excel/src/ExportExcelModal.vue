@@ -5,7 +5,7 @@
 </template>
 <script lang="ts">
   import type { ExportModalResult } from './typing';
-  import { defineComponent } from 'vue';
+  import { defineComponent, computed } from 'vue';
   import { BasicModal, useModalInner } from '/@/components/Modal';
   import { BasicForm, FormSchema, useForm } from '/@/components/Form';
 
@@ -13,7 +13,7 @@
 
   const { t } = useI18n();
 
-  const schemas: FormSchema[] = [
+  const baseSchemas: FormSchema[] = [
     {
       field: 'filename',
       component: 'Input',
@@ -54,17 +54,42 @@
   ];
   export default defineComponent({
     components: { BasicModal, BasicForm },
+    props: {
+      showExportSelect: { type: Boolean, default: false },
+    },
     emits: ['success', 'register'],
-    setup(_, { emit }) {
+    setup(props, { emit }) {
+      const { t } = useI18n();
       const [registerForm, { validateFields }] = useForm();
       const [registerModal, { closeModal }] = useModalInner();
 
+      const schemas = computed(() => {
+        const s = [...baseSchemas];
+        if (props.showExportSelect) {
+          s.push({
+            field: 'exportScope',
+            component: 'Select',
+            label: '导出范围',
+            defaultValue: 'current',
+            colProps: { span: 24 },
+            componentProps: {
+              options: [
+                { label: '当前页', value: 'current' },
+                { label: '所有页', value: 'all' },
+              ],
+            },
+          });
+        }
+        return s;
+      });
+
       async function handleOk() {
         const res = (await validateFields()) as ExportModalResult;
-        const { filename, bookType } = res;
+        const { filename, bookType, exportScope } = res;
         emit('success', {
           filename: `${filename.split('.').shift()}.${bookType}`,
           bookType,
+          exportScope,
         });
         closeModal();
       }
