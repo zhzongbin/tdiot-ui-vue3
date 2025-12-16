@@ -8,6 +8,7 @@ export const DEVICE_FIELDS = {
 
     { key: 'DeviceNo', alias: '设备编号', group: 'device', visible: true },
     { key: 'MQTT_CLIENT_ID', alias: 'MQTT客户端ID', group: 'device', visible: false },
+    { key: 'credentialsValue', alias: '鉴权信息', group: 'device', visible: false },
     { key: 'DeviceName', alias: '设备名称', group: 'device', visible: false },
     { key: 'DeviceType', alias: '设备类型', group: 'device', visible: false },
     { key: '监测类型', alias: '监测类型', group: 'device', visible: false },
@@ -35,6 +36,7 @@ export const DEVICE_FIELDS = {
     'StationName',
     'active',
     'DeviceNo',
+    'credentialsValue',
     'ower',
     'project',
     'ProviceNo',
@@ -62,7 +64,16 @@ export const DEVICE_FIELDS = {
     status: { title: '状态信息', order: ['active', 'lastActivityTime'] },
     device: {
       title: '设备信息',
-      order: ['DeviceNo', 'DeviceName', 'DeviceType', '监测类型', 'manufacturer', 'ower', 'project'],
+      order: [
+        'DeviceNo',
+        'DeviceName',
+        'DeviceType',
+        'credentialsValue',
+        '监测类型',
+        'manufacturer',
+        'ower',
+        'project',
+      ],
     },
     site: {
       title: '站点与建设信息',

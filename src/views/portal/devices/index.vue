@@ -38,6 +38,7 @@
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
   import { Icon } from '/@/components/Icon';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
+  import { getDeviceCredentialsByDeviceId } from '/@/api/tb/device';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
   import dayjs from 'dayjs';
@@ -290,6 +291,24 @@
     const page = cachedPage || (await findEntityDataByQuery(query));
     if (!cachedPage) setCache('portal_devices', cacheKey, page, 24 * 60 * 60 * 1000);
     const mapped = page.data.map((row: any) => mapEntityRow(row));
+
+    // Fetch credentials for devices (Optimized: Concurrent fetch)
+    // Note: This API call is per-device. For large pages (Export All), this might be slow.
+    // We assume standard usage or manageable export sizes.
+    // We swallow errors to prevent breaking the list if one device fails.
+    if (mapped.length > 0) {
+      await Promise.all(
+        mapped.map(async (item: any) => {
+          try {
+            const creds = await getDeviceCredentialsByDeviceId(item.entityId.id);
+            item.credentialsValue = creds.credentialsValue;
+          } catch (e) {
+            // ignore error or no permission
+          }
+        }),
+      );
+    }
+
     return { ...page, data: mapped };
   }
 
