@@ -1,0 +1,37 @@
+export default {
+  deviceDetail: 'Device Detail',
+  relatedAssets: 'Related Assets',
+  serverAttributes: 'Server Attributes',
+  refresh: 'Refresh',
+  historyTrend: 'History Trend',
+  monitoringData: 'Monitoring Data',
+  deviceStatus: 'Device Status',
+  alarmList: 'Alarm List',
+  alarmStatus: 'Status Filter',
+  dataIndicators: 'Select Indicators',
+  attributes: {
+    name: 'Attribute Name',
+    key: 'Attribute Key',
+    value: 'Value',
+    lastUpdate: 'Last Update',
+  },
+  timeRange: {
+    hour: '1 Hour',
+    day: '24 Hours',
+    week: '7 Days',
+  },
+  alarm: {
+    active: 'Active',
+    cleared: 'Cleared',
+    ack: 'Ack',
+    all: 'All',
+  },
+  aggregation: {
+    none: 'None',
+    avg: 'Average',
+    max: 'Maximum',
+    min: 'Minimum',
+    sum: 'Sum',
+    count: 'Count',
+  },
+};

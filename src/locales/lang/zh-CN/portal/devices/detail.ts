@@ -1,0 +1,37 @@
+export default {
+  deviceDetail: '设备详情',
+  relatedAssets: '查看所属地灾点',
+  serverAttributes: '服务端属性',
+  refresh: '刷新',
+  historyTrend: '历史趋势',
+  monitoringData: '监测数据',
+  deviceStatus: '设备状态',
+  alarmList: '告警列表',
+  alarmStatus: '状态筛选',
+  dataIndicators: '选择数据指标',
+  attributes: {
+    name: '属性名',
+    key: '属性键',
+    value: '属性值',
+    lastUpdate: '最后更新时间',
+  },
+  timeRange: {
+    hour: '1小时',
+    day: '24小时',
+    week: '7天',
+  },
+  alarm: {
+    active: '激活',
+    cleared: '已清除',
+    ack: '已确认',
+    all: '全部',
+  },
+  aggregation: {
+    none: '无聚合',
+    avg: '平均值',
+    max: '最大值',
+    min: '最小值',
+    sum: '求和',
+    count: '计数',
+  },
+};

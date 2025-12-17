@@ -1,16 +1,18 @@
 <template>
-  <PageWrapper :title="t('routes.portal.deviceDetail')">
+  <PageWrapper :title="t('portal.devices.detail.deviceDetail')">
     <div class="space-y-6">
       <div class="flex gap-2">
-        <a-button type="primary" @click="goRelatedAssets">查看所属地灾点</a-button>
+        <a-button type="primary" @click="goRelatedAssets">{{ t('portal.devices.detail.relatedAssets') }}</a-button>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <template v-for="(group, groupKey) in DEVICE_FIELDS.groups" :key="groupKey">
           <a-card :title="group.title" size="small" :bordered="false" class="shadow-sm">
-            <div class="grid grid-cols-2 gap-y-2 gap-x-4">
-              <div v-for="key in group.order" :key="key" class="flex flex-col">
-                <span class="text-gray-500 text-xs">{{ getFieldAlias(key) }}</span>
-                <span class="font-medium text-sm truncate" :title="displayValue(detail[key])">
+            <a-descriptions bordered size="small" :column="2">
+              <a-descriptions-item v-for="key in group.order" :key="key" :label="getFieldAlias(key)">
+                <span
+                  class="font-medium text-sm truncate block w-full max-w-[200px]"
+                  :title="displayValue(detail[key])"
+                >
                   <template v-if="['Longitude', 'Latitude'].includes(key)">
                     <a @click="openMap(detail['Longitude'], detail['Latitude'])" class="text-blue-600 hover:underline">
                       {{ displayValue(detail[key]) }}
@@ -20,15 +22,15 @@
                     {{ displayValue(detail[key]) || '-' }}
                   </template>
                 </span>
-              </div>
-            </div>
+              </a-descriptions-item>
+            </a-descriptions>
           </a-card>
         </template>
       </div>
 
-      <a-card title="服务端属性" :loading="serverAttributesLoading">
+      <a-card :title="t('portal.devices.detail.serverAttributes')" :loading="serverAttributesLoading">
         <template #extra>
-          <a-button type="link" @click="refreshAttributes">刷新</a-button>
+          <a-button type="link" @click="refreshAttributes">{{ t('portal.devices.detail.refresh') }}</a-button>
         </template>
         <a-table
           :columns="serverAttrColumns"
@@ -40,10 +42,10 @@
         />
       </a-card>
 
-      <a-card title="历史趋势" :loading="chartLoading">
+      <a-card :title="t('portal.devices.detail.historyTrend')" :loading="chartLoading">
         <div class="mb-2 flex items-center gap-2 justify-end">
           <a-select v-model:value="aggregation" style="width: 120px" @change="fetchChartData">
-            <a-select-option v-for="opt in AGGREGATION_OPTIONS" :key="opt.value" :value="opt.value">
+            <a-select-option v-for="opt in aggregationOptions" :key="opt.value" :value="opt.value">
               {{ opt.label }}
             </a-select-option>
           </a-select>
@@ -53,20 +55,20 @@
             @change="handleCustomTimeChange"
             style="width: 320px"
           />
-          <a-radio-group v-model:value="timeRange" button-style="solid" @change="handleTimeRangeChange">
-            <a-radio-button value="1h">1小时</a-radio-button>
-            <a-radio-button value="24h">24小时</a-radio-button>
-            <a-radio-button value="7d">7天</a-radio-button>
-          </a-radio-group>
+          <Radio.Group v-model:value="timeRange" button-style="solid" @change="handleTimeRangeChange">
+            <Radio.Button value="1h">{{ t('portal.devices.detail.timeRange.hour') }}</Radio.Button>
+            <Radio.Button value="24h">{{ t('portal.devices.detail.timeRange.day') }}</Radio.Button>
+            <Radio.Button value="7d">{{ t('portal.devices.detail.timeRange.week') }}</Radio.Button>
+          </Radio.Group>
         </div>
 
         <a-tabs v-model:activeKey="activeTabKey" @change="handleTabChange">
-          <a-tab-pane key="monitoring" tab="监测数据">
+          <a-tab-pane key="monitoring" :tab="t('portal.devices.detail.monitoringData')">
             <div class="mb-2 flex justify-end">
               <a-select
                 v-model:value="selectedKeys"
                 mode="multiple"
-                placeholder="选择数据指标"
+                :placeholder="t('portal.devices.detail.dataIndicators')"
                 style="min-width: 200px; max-width: 400px"
                 @change="handleChartFilterChange"
                 :maxTagCount="2"
@@ -76,22 +78,22 @@
             </div>
             <div ref="chartRef" style="width: 100%; height: 400px"></div>
           </a-tab-pane>
-          <a-tab-pane key="status" tab="设备状态">
+          <a-tab-pane key="status" :tab="t('portal.devices.detail.deviceStatus')">
             <div ref="statusChartRef" style="width: 100%; height: 400px"></div>
           </a-tab-pane>
         </a-tabs>
       </a-card>
 
       <a-card :loading="false" :bordered="false">
-        <BasicTable @register="registerAlarmTable" title="告警列表">
+        <BasicTable @register="registerAlarmTable" :title="t('portal.devices.detail.alarmList')">
           <template #toolbar>
             <div class="flex items-center">
-              <span class="mr-2">状态筛选:</span>
+              <span class="mr-2">{{ t('portal.devices.detail.alarmStatus') }}:</span>
               <Radio.Group v-model:value="alarmStatus" button-style="solid" @change="handleAlarmStatusChange">
-                <Radio.Button value="ACTIVE">激活</Radio.Button>
-                <Radio.Button value="CLEARED">已清除</Radio.Button>
-                <Radio.Button value="ACK">已确认</Radio.Button>
-                <Radio.Button value="ANY">全部</Radio.Button>
+                <Radio.Button value="ACTIVE">{{ t('portal.devices.detail.alarm.active') }}</Radio.Button>
+                <Radio.Button value="CLEARED">{{ t('portal.devices.detail.alarm.cleared') }}</Radio.Button>
+                <Radio.Button value="ACK">{{ t('portal.devices.detail.alarm.ack') }}</Radio.Button>
+                <Radio.Button value="ANY">{{ t('portal.devices.detail.alarm.all') }}</Radio.Button>
               </Radio.Group>
             </div>
           </template>
@@ -131,7 +133,7 @@
   import { Scope } from '/@/enums/telemetryEnum';
   import { useECharts } from '/@/hooks/web/useECharts';
   import { Ref, computed, h } from 'vue';
-  import { Tabs, TabPane, Select, Radio, DatePicker, Tag } from 'ant-design-vue';
+  import { Tabs, TabPane, Select, Radio, DatePicker, Tag, Descriptions } from 'ant-design-vue';
   import { getAlarmInfoByEntity } from '/@/api/tb/alarm';
   import { AlarmSeverity } from '/@/enums/alarmEnum';
   import { BasicTable, useTable, BasicColumn, TableAction } from '/@/components/Table';
@@ -143,9 +145,23 @@
   const ASelect = Select;
   const ASelectOption = Select.Option;
   const RangePicker = DatePicker.RangePicker;
+  const ADescriptions = Descriptions;
+  const ADescriptionsItem = Descriptions.Item;
+
+  interface DeviceDetail {
+    entityId?: { id: string; entityType: string };
+    name?: string;
+    type?: string;
+    label?: string;
+    createdTime?: number;
+    active?: boolean;
+    lastActivityTime?: number;
+    // Dynamic fields from attributes
+    [key: string]: any;
+  }
 
   const { t } = useI18n();
-  const detail = ref<any>({});
+  const detail = ref<DeviceDetail>({});
   const { setTitle } = useTabs();
 
   // Server Attributes
@@ -179,12 +195,31 @@
     'project',
   ];
 
-  const serverAttrColumns = [
-    { title: '属性名', dataIndex: 'alias', key: 'alias', width: 150 },
-    { title: '属性键', dataIndex: 'key', key: 'key', width: 150 },
-    { title: '属性值', dataIndex: 'value', key: 'value' },
-    { title: '最后更新时间', dataIndex: 'lastUpdateTs', key: 'lastUpdateTs', width: 180 },
-  ];
+  const serverAttrColumns = computed(() => [
+    {
+      title: t('portal.devices.detail.attributes.name'),
+      dataIndex: 'alias',
+      key: 'alias',
+      width: 150,
+    },
+    {
+      title: t('portal.devices.detail.attributes.key'),
+      dataIndex: 'key',
+      key: 'key',
+      width: 150,
+    },
+    {
+      title: t('portal.devices.detail.attributes.value'),
+      dataIndex: 'value',
+      key: 'value',
+    },
+    {
+      title: t('portal.devices.detail.attributes.lastUpdate'),
+      dataIndex: 'lastUpdateTs',
+      key: 'lastUpdateTs',
+      width: 180,
+    },
+  ]);
 
   const serverAttributeList = computed(() => {
     return TARGET_ATTR_KEYS.map((key) => {
@@ -228,14 +263,14 @@
   const chartLoading = ref(false);
   const aggregation = ref<string>('NONE');
 
-  const AGGREGATION_OPTIONS = [
-    { label: '无聚合', value: 'NONE' },
-    { label: '平均值', value: 'AVG' },
-    { label: '最大值', value: 'MAX' },
-    { label: '最小值', value: 'MIN' },
-    { label: '求和', value: 'SUM' },
-    { label: '计数', value: 'COUNT' },
-  ];
+  const aggregationOptions = computed(() => [
+    { label: t('portal.devices.detail.aggregation.none'), value: 'NONE' },
+    { label: t('portal.devices.detail.aggregation.avg'), value: 'AVG' },
+    { label: t('portal.devices.detail.aggregation.max'), value: 'MAX' },
+    { label: t('portal.devices.detail.aggregation.min'), value: 'MIN' },
+    { label: t('portal.devices.detail.aggregation.sum'), value: 'SUM' },
+    { label: t('portal.devices.detail.aggregation.count'), value: 'COUNT' },
+  ]);
 
   // Status Keys Configuration
   const STATUS_KEYS_CONFIG = [
@@ -310,8 +345,10 @@
       telemetryKeys.value = filteredKeys;
 
       if (filteredKeys.length > 0) {
-        // Auto-select keys that match known patterns (QJ, LF, JS)
-        const autoSelected = filteredKeys.filter((k) => k.includes('QJ') || k.includes('LF') || k.includes('JS'));
+        // Auto-select keys that match known patterns (QJ, LF, JS, YL_value)
+        const autoSelected = filteredKeys.filter(
+          (k) => k.includes('QJ') || k.includes('LF') || k.includes('JS') || k.includes('YL_value'),
+        );
 
         // If no known patterns found, fallback to first few
         if (autoSelected.length > 0) {
@@ -429,7 +466,7 @@
     keys.forEach((key) => {
       if (key.includes('QJ')) groups.QJ.push(key);
       else if (key.includes('LF')) groups.LF.push(key);
-      else if (key.includes('JS')) groups.JS.push(key);
+      else if (key.includes('JS') || key.includes('YL_value')) groups.JS.push(key);
       else groups.Other.push(key);
     });
 
@@ -632,10 +669,10 @@
     });
   }
 
-  function mapEntityRow(row: any) {
+  function mapEntityRow(row: any): DeviceDetail {
     const latest = row.latest || {};
     const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
-    const entity: any = {
+    const entity: DeviceDetail = {
       entityId: row.entityId,
       name: get('ENTITY_FIELD', 'name'),
       type: get('ENTITY_FIELD', 'type'),
@@ -691,7 +728,7 @@
     },
     actionColumn: {
       width: 100,
-      title: '操作',
+      title: t('common.action'),
       dataIndex: 'action',
       slots: { customRender: 'action' },
     },
