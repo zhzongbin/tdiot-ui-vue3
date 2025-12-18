@@ -371,6 +371,18 @@
   const sensorGroups = computed(() => {
     const groups: Record<string, string[]> = { ALL: [] };
     telemetryKeys.value.forEach((key) => {
+      // 1. DZ Special Filtering: Only keep specific DZ keys if requested
+      if (key.includes('_DZ_')) {
+        // User requested to only keep "..._R".
+        // We'll keeps if it ends with "_R" or doesn't look like the noisy "Vmn"/"Vsp" ones (conservative approach)
+        // If the key strictly matches the "Level_n_Vmn" pattern, we skip it.
+        if (key.includes('_Vmn') || key.includes('_Vsp') || key.includes('_Iab') || key.includes('_R')) {
+          return; // Skip these for noise reduction as requested
+        }
+        // Optional: If user strictly wants ONLY _R, uncomment below:
+        // if (!key.endsWith('_R') && !key.match(/Level_\d+$/)) return;
+      }
+
       groups.ALL.push(key);
       const parts = key.split('_');
       // Rule: Level_Type_Index_Suffix e.g. L1_QJ_1_X -> Type is QJ (index 1)
