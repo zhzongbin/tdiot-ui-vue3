@@ -64,17 +64,33 @@
 
         <a-tabs v-model:activeKey="activeTabKey" @change="handleTabChange">
           <a-tab-pane key="monitoring" :tab="t('portal.devices.detail.monitoringData')">
-            <div class="mb-2 flex justify-end">
-              <a-select
-                v-model:value="selectedKeys"
-                mode="multiple"
-                :placeholder="t('portal.devices.detail.dataIndicators')"
-                style="min-width: 200px; max-width: 400px"
-                @change="handleChartFilterChange"
-                :maxTagCount="2"
-              >
-                <a-select-option v-for="key in telemetryKeys" :key="key" :value="key">{{ key }}</a-select-option>
-              </a-select>
+            <div class="mb-2 flex flex-col gap-2">
+              <div class="flex justify-end items-center gap-2">
+                <Radio.Group
+                  v-model:value="activeCategory"
+                  button-style="solid"
+                  size="small"
+                  @change="handleCategoryChange"
+                >
+                  <Radio.Button v-for="cat in availableCategories" :key="cat.value" :value="cat.value">
+                    {{ cat.label }}
+                  </Radio.Button>
+                </Radio.Group>
+              </div>
+              <div class="flex justify-end items-center gap-2">
+                <a-button size="small" @click="handleSelectAllInCategory" title="全选当前分类">全选</a-button>
+                <a-button size="small" @click="handleClearSelection" title="清空选择">清空</a-button>
+                <a-select
+                  v-model:value="selectedKeys"
+                  mode="multiple"
+                  :placeholder="t('portal.devices.detail.dataIndicators')"
+                  style="min-width: 200px; max-width: 600px; flex-grow: 1"
+                  @change="handleChartFilterChange"
+                  :maxTagCount="3"
+                  :options="filteredOptions"
+                >
+                </a-select>
+              </div>
             </div>
             <div ref="chartRef" style="width: 100%; height: 400px"></div>
           </a-tab-pane>
@@ -335,6 +351,90 @@
     }
   }
 
+  // Sensor Category Mapping
+  const SENSOR_CATEGORY_MAP: Record<string, string> = {
+    QJ: '倾角',
+    LF: '裂缝',
+    JS: '加速度',
+    YL: '雨量',
+    HS: '含水率', // Updated as per user
+    SW: '深部位移',
+    TW: '土温',
+    DZ: '电阻',
+    SY: '水压', // Guessing based on common patterns, can be updated
+    DX: '水位', // Unknown, keeping code
+  };
+
+  const activeCategory = ref<string>('ALL');
+
+  // Computed property to group keys
+  const sensorGroups = computed(() => {
+    const groups: Record<string, string[]> = { ALL: [] };
+    telemetryKeys.value.forEach((key) => {
+      groups.ALL.push(key);
+      const parts = key.split('_');
+      // Rule: Level_Type_Index_Suffix e.g. L1_QJ_1_X -> Type is QJ (index 1)
+      if (parts.length >= 2) {
+        const type = parts[1];
+        if (!groups[type]) {
+          groups[type] = [];
+        }
+        groups[type].push(key);
+      } else {
+        // Fallback for non-standard keys
+        if (!groups['OTHER']) groups['OTHER'] = [];
+        groups['OTHER'].push(key);
+      }
+    });
+    return groups;
+  });
+
+  // Filtered options for the Select component
+  const filteredOptions = computed(() => {
+    const group = sensorGroups.value[activeCategory.value] || [];
+    return group.map((key) => ({ label: key, value: key }));
+  });
+
+  // Available categories for the Radio Group
+  const availableCategories = computed(() => {
+    const types = Object.keys(sensorGroups.value).filter((k) => k !== 'ALL' && sensorGroups.value[k].length > 0);
+    const list = types.map((type) => ({
+      value: type,
+      label: SENSOR_CATEGORY_MAP[type] || type,
+    }));
+    // Put ALL at the front, OTHER at the end
+    const others = list.filter((x) => x.value === 'OTHER');
+    const normals = list.filter((x) => x.value !== 'OTHER');
+    return [{ value: 'ALL', label: t('portal.devices.detail.alarm.all') }, ...normals, ...others];
+  });
+
+  function handleCategoryChange() {
+    const group = sensorGroups.value[activeCategory.value] || [];
+    if (group.length > 0) {
+      if (activeCategory.value === 'ALL') {
+        // Select first few if ALL
+        selectedKeys.value = group.slice(0, 3);
+      } else {
+        // Select all in this category
+        selectedKeys.value = [...group];
+      }
+      fetchChartData();
+    }
+  }
+
+  function handleSelectAllInCategory() {
+    const group = sensorGroups.value[activeCategory.value] || [];
+    // Union current unique keys with new group keys
+    const newSet = new Set([...selectedKeys.value, ...group]);
+    selectedKeys.value = Array.from(newSet);
+    fetchChartData();
+  }
+
+  function handleClearSelection() {
+    selectedKeys.value = [];
+    fetchChartData();
+  }
+
   async function fetchTelemetryKeys() {
     const deviceId = router.currentRoute.value.params.deviceId as string;
     if (!deviceId) return;
@@ -345,15 +445,23 @@
       telemetryKeys.value = filteredKeys;
 
       if (filteredKeys.length > 0) {
-        // Auto-select keys that match known patterns (QJ, LF, JS, YL_value)
-        const autoSelected = filteredKeys.filter(
-          (k) => k.includes('QJ') || k.includes('LF') || k.includes('JS') || k.includes('YL_value'),
-        );
+        // Auto-select logic: Try to select keys from the first available category (priority: QJ/LF/YL)
+        const priorityTypes = ['QJ', 'LF', 'YL'];
+        let initialKeys: string[] = [];
 
-        // If no known patterns found, fallback to first few
-        if (autoSelected.length > 0) {
-          selectedKeys.value = autoSelected;
+        for (const type of priorityTypes) {
+          const typeKeys = filteredKeys.filter((k) => k.includes(`_${type}_`));
+          if (typeKeys.length > 0) {
+            initialKeys = typeKeys;
+            activeCategory.value = type; // Switch tab to this type
+            break;
+          }
+        }
+
+        if (initialKeys.length > 0) {
+          selectedKeys.value = initialKeys;
         } else {
+          // Fallback to first few
           selectedKeys.value = filteredKeys.slice(0, 3);
         }
 
@@ -468,7 +576,7 @@
       if (key.includes('QJ')) groups.QJ.push(key);
       else if (key.includes('LF')) groups.LF.push(key);
       else if (key.includes('JS')) groups.JS.push(key);
-      else if (key.includes('YL_value')) groups.YL.push(key);
+      else if (key.includes('YL')) groups.YL.push(key);
       else groups.Other.push(key);
     });
 
@@ -588,7 +696,6 @@
         const sortedPoints = [...dataPoints].sort((a, b) => a.ts - b.ts);
 
         sortedPoints.forEach((pt: any) => {
-          // value might be string or number
           const numVal = parseFloat(pt.value);
           if (!isNaN(numVal)) {
             sum += numVal;
