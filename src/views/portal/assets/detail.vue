@@ -100,7 +100,34 @@
           </template>
         </BasicTable>
       </a-card>
+
+      <a-card :loading="false" :bordered="false">
+        <BasicTable @register="registerAlarmTable" :title="t('portal.devices.detail.alarmList')">
+          <template #toolbar>
+            <div class="flex items-center">
+              <span class="mr-2">{{ t('portal.devices.detail.alarmStatus') }}:</span>
+              <Radio.Group v-model:value="alarmStatus" button-style="solid" @change="handleAlarmStatusChange">
+                <Radio.Button value="ACTIVE">{{ t('portal.devices.detail.alarm.active') }}</Radio.Button>
+                <Radio.Button value="CLEARED">{{ t('portal.devices.detail.alarm.cleared') }}</Radio.Button>
+                <Radio.Button value="ACK">{{ t('portal.devices.detail.alarm.ack') }}</Radio.Button>
+                <Radio.Button value="ANY">{{ t('portal.devices.detail.alarm.all') }}</Radio.Button>
+              </Radio.Group>
+            </div>
+          </template>
+          <template #action="{ record }">
+            <TableAction
+              :actions="[
+                {
+                  label: '详情',
+                  onClick: openAlarmDetail.bind(null, record),
+                },
+              ]"
+            />
+          </template>
+        </BasicTable>
+      </a-card>
     </div>
+    <AlarmDetailDrawer @register="registerDrawer" @success="handleAlarmActionSuccess" />
   </PageWrapper>
 </template>
 <script lang="ts">
@@ -109,19 +136,24 @@
   };
 </script>
 <script lang="ts" setup>
-  import { ref, onMounted, watchEffect } from 'vue';
+  import { ref, onMounted, watchEffect, h } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
-  import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
+  import { findEntityDataByQuery, findAlarmDataByQuery } from '/@/api/tb/entityQuery';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
   import { useTabs } from '/@/hooks/web/useTabs';
   import dayjs from 'dayjs';
   import { ASSET_FIELDS } from '/@/views/portal/config/attributes';
-  import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
+  import { BasicTable, useTable, BasicColumn, TableAction } from '/@/components/Table';
   import { Icon } from '/@/components/Icon';
   import { jsonToSheetXlsx } from '/@/components/Excel/src/Export2Excel';
   import { useTianditu } from '/@/hooks/web/useTianditu';
+  import { Radio, Tag } from 'ant-design-vue';
+  import { getAlarmInfoByEntity } from '/@/api/tb/alarm';
+  import { AlarmSeverity } from '/@/enums/alarmEnum';
+  import { useDrawer } from '/@/components/Drawer';
+  import AlarmDetailDrawer from '/@/views/tdiot/alerts/detail.vue';
 
   const { t } = useI18n();
   const detail = ref<any>({});
@@ -516,6 +548,140 @@
       tdtMap.setMapType((window as any).TMAP_HYBRID_MAP);
     } else if (type === 'vec') {
       tdtMap.setMapType((window as any).TMAP_NORMAL_MAP);
+    }
+  }
+
+  // Alarm Logic
+  const alarmStatus = ref('ACTIVE');
+  const [registerDrawer, { openDrawer }] = useDrawer();
+
+  const [registerAlarmTable, { reload: reloadAlarms }] = useTable({
+    api: fetchAlarms,
+    columns: getAlarmColumns(),
+    useSearchForm: false,
+    showTableSetting: false,
+    bordered: true,
+    showIndexColumn: false,
+    pagination: { pageSize: 10 },
+    canResize: false,
+    rowKey: (record) => record.id.id,
+    fetchSetting: {
+      pageField: 'page',
+      sizeField: 'pageSize',
+      listField: 'items',
+      totalField: 'total',
+    },
+    actionColumn: {
+      width: 100,
+      title: t('common.action'),
+      dataIndex: 'action',
+      slots: { customRender: 'action' },
+    },
+  });
+
+  function handleAlarmStatusChange() {
+    reloadAlarms({ page: 1 });
+  }
+
+  function openAlarmDetail(record: any) {
+    openDrawer(true, record);
+  }
+
+  function handleAlarmActionSuccess() {
+    reloadAlarms();
+  }
+
+  function getAlarmColumns(): BasicColumn[] {
+    return [
+      {
+        title: '严重程度',
+        dataIndex: 'severity',
+        width: 100,
+        customRender: ({ record }) => {
+          const color = getSeverityColor(record.severity);
+          return h(Tag, { color }, () => record.severity);
+        },
+      },
+      { title: '名称', dataIndex: 'name', width: 200 },
+      { title: '来源', dataIndex: 'originatorName', width: 150 },
+      {
+        title: '时间',
+        dataIndex: 'createdTime',
+        width: 180,
+        format: (text) => (text ? dayjs(text).format('YYYY-MM-DD HH:mm:ss') : '-'),
+      },
+      { title: '状态', dataIndex: 'status', width: 120 },
+    ];
+  }
+
+  function getSeverityColor(severity: AlarmSeverity) {
+    switch (severity) {
+      case AlarmSeverity.CRITICAL:
+        return 'red';
+      case AlarmSeverity.MAJOR:
+        return 'orange';
+      case AlarmSeverity.MINOR:
+        return 'gold';
+      case AlarmSeverity.WARNING:
+        return 'blue';
+      case AlarmSeverity.INDETERMINATE:
+        return 'purple';
+      default:
+        return 'default';
+    }
+  }
+
+  async function fetchAlarms(params: any) {
+    const assetId = router.currentRoute.value.params.assetId as string;
+    if (!assetId) return { items: [], total: 0 };
+
+    const statusList = alarmStatus.value === 'ANY' ? [] : [alarmStatus.value];
+
+    // Construct AlarmDataQuery
+    const query = {
+      entityFilter: {
+        type: 'relationsQuery',
+        rootEntity: { id: assetId, entityType: EntityType.ASSET },
+        direction: 'FROM',
+        maxLevel: 1,
+        fetchLastLevelOnly: true,
+        filters: [{ relationType: 'Contains', entityTypes: [EntityType.DEVICE], negate: false }],
+      },
+      pageLink: {
+        page: params.page > 0 ? params.page - 1 : 0,
+        pageSize: params.pageSize,
+        textSearch: null,
+        sortOrder: {
+          direction: params.sortOrder || 'DESC',
+          key: { type: 'ALARM_FIELD', key: params.sortProperty || 'createdTime' },
+        },
+        searchPropagatedAlarms: false,
+        statusList: statusList,
+      },
+      alarmFields: [
+        { type: 'ALARM_FIELD', key: 'name' },
+        { type: 'ALARM_FIELD', key: 'status' },
+        { type: 'ALARM_FIELD', key: 'severity' },
+        { type: 'ALARM_FIELD', key: 'createdTime' },
+        { type: 'ALARM_FIELD', key: 'originatorName' },
+      ],
+    };
+
+    try {
+      const res = await findAlarmDataByQuery(query);
+      const items = res.data.map((item: any) => ({
+        ...item,
+        id: item.id,
+        createdTime: item.createdTime,
+        name: item.latest?.ALARM_FIELD?.name?.value || item.name || '',
+        status: item.latest?.ALARM_FIELD?.status?.value || item.status || '',
+        severity: item.latest?.ALARM_FIELD?.severity?.value || item.severity || '',
+        originatorName: item.latest?.ALARM_FIELD?.originatorName?.value || item.originatorName || '',
+      }));
+      return { items: items, total: res.totalElements };
+    } catch (error) {
+      console.error('fetchAlarms error:', error);
+      return { items: [], total: 0 };
     }
   }
 </script>
