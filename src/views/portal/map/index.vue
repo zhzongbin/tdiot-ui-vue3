@@ -341,7 +341,7 @@
   function updateMarkers(zoom: number) {
     // Update Assets
     if (currentMode === 'ASSET_LOW') {
-      const showLabel = zoom >= 15;
+      const showLabel = zoom >= 13;
       assetOverlays.forEach((ov: any) => {
         if (ov.updateVisibilty) ov.updateVisibilty(showLabel);
         if (ov.update) ov.update();
@@ -669,7 +669,7 @@
 
         // Label
         const label = document.createElement('div');
-        label.style.background = 'rgba(255,255,255,0.5)';
+        label.style.background = 'rgba(255,255,255,0.6)';
         label.style.border = '1px solid #d9d9d9';
         label.style.borderRadius = '4px';
         label.style.boxShadow = '0 1px 2px rgba(0,0,0,0.15)';
