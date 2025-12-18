@@ -460,19 +460,21 @@
       QJ: [] as string[],
       LF: [] as string[],
       JS: [] as string[],
+      YL: [] as string[], // Rain
       Other: [] as string[],
     };
 
     keys.forEach((key) => {
       if (key.includes('QJ')) groups.QJ.push(key);
       else if (key.includes('LF')) groups.LF.push(key);
-      else if (key.includes('JS') || key.includes('YL_value')) groups.JS.push(key);
+      else if (key.includes('JS')) groups.JS.push(key);
+      else if (key.includes('YL_value')) groups.YL.push(key);
       else groups.Other.push(key);
     });
 
     let yAxisIndexCounter = 0;
 
-    // 1. QJ
+    // 1. QJ (Inclination) - Line
     if (groups.QJ.length > 0) {
       yAxis.push({
         type: 'value',
@@ -498,7 +500,7 @@
       yAxisIndexCounter++;
     }
 
-    // 2. LF
+    // 2. LF (Crack) - Line
     if (groups.LF.length > 0) {
       yAxis.push({
         type: 'value',
@@ -526,7 +528,7 @@
       yAxisIndexCounter++;
     }
 
-    // 3. JS
+    // 3. JS (Acceleration) - Bar
     if (groups.JS.length > 0) {
       yAxis.push({
         type: 'value',
@@ -550,7 +552,64 @@
       yAxisIndexCounter++;
     }
 
-    // 4. Other (Default)
+    // 4. YL (Rainfall) - Bar + Cumulative Line
+    if (groups.YL.length > 0) {
+      // Offset calculation depends on previous axes
+      let offset = 0;
+      if (groups.LF.length > 0) offset += 50;
+      if (groups.JS.length > 0) offset += 50;
+
+      yAxis.push({
+        type: 'value',
+        name: 'YL',
+        position: 'right',
+        offset: offset,
+        axisLine: { show: true },
+        splitLine: { show: false },
+      });
+
+      groups.YL.forEach((key) => {
+        const val = dataMap[key];
+        const dataPoints = Array.isArray(val) ? val : val?.data || [];
+
+        // Bar Chart (Raw Value)
+        series.push({
+          name: key,
+          type: 'bar',
+          yAxisIndex: yAxisIndexCounter,
+          data: dataPoints.map((pt: any) => [pt.ts, pt.value]),
+        });
+        legendData.push(key);
+
+        // Cumulative Line Chart
+        const cumulativeData: any[] = [];
+        let sum = 0;
+        // Sort by time just in case
+        const sortedPoints = [...dataPoints].sort((a, b) => a.ts - b.ts);
+
+        sortedPoints.forEach((pt: any) => {
+          // value might be string or number
+          const numVal = parseFloat(pt.value);
+          if (!isNaN(numVal)) {
+            sum += numVal;
+            cumulativeData.push([pt.ts, sum]);
+          }
+        });
+
+        const cumulativeKey = `${key} (Cumulative)`;
+        series.push({
+          name: cumulativeKey,
+          type: 'line',
+          yAxisIndex: yAxisIndexCounter,
+          showSymbol: false,
+          data: cumulativeData,
+        });
+        legendData.push(cumulativeKey);
+      });
+      yAxisIndexCounter++;
+    }
+
+    // 5. Other (Default) - Line
     if (groups.Other.length > 0) {
       if (yAxis.length === 0) {
         yAxis.push({ type: 'value', position: 'left' });
@@ -581,7 +640,7 @@
       },
       grid: {
         left: '3%',
-        right: groups.JS.length > 0 && groups.LF.length > 0 ? '15%' : '8%',
+        right: groups.JS.length > 0 || groups.LF.length > 0 || groups.YL.length > 0 ? '15%' : '8%',
         bottom: '3%',
         containLabel: true,
       },
