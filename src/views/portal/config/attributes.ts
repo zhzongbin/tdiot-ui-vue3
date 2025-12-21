@@ -120,7 +120,7 @@ export const ASSET_FIELDS = {
     { key: '建设年份', alias: '建设年份', group: 'construction', visible: true },
     { key: '是否改建点', alias: '是否改建点', group: 'construction', visible: false },
     { key: '改建年份', alias: '改建年份', group: 'construction', visible: false },
-    { key: '建设项目', alias: '建设项目', group: 'construction', visible: true },
+    { key: '项目', alias: '建设项目', group: 'construction', visible: true },
 
     { key: '经度', alias: '经度', group: 'geo', visible: false },
     { key: '纬度', alias: '纬度', group: 'geo', visible: false },
@@ -140,7 +140,7 @@ export const ASSET_FIELDS = {
     '监测点名称',
     '省级编号',
     '监测点编号',
-    '建设项目',
+    '项目',
     'relateYL',
     '市',
     '县（市、区）',
@@ -177,7 +177,7 @@ export const ASSET_FIELDS = {
     hazard: { title: '隐患与灾害', order: ['灾害类型', '隐患区域地形地貌名称', '是否隐患点', '隐患点状态'] },
     construction: {
       title: '建设信息',
-      order: ['建设级别', '建设单位', '建设年份', '是否改建点', '改建年份', '建设项目'],
+      order: ['建设级别', '建设单位', '建设年份', '是否改建点', '改建年份', '项目'],
     },
     geo: { title: '地理坐标', order: ['经度', '纬度', '高程'] },
     stats: { title: '威胁统计', order: ['威胁户数（户）', '威胁人数（人）', '威胁财产（万元）'] },

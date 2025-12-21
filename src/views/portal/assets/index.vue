@@ -29,7 +29,7 @@
         </a-space>
       </template>
     </BasicTable>
-    <ExpExcelModal @register="registerExportModal" @success="handleExport" />
+    <ExpExcelModal @register="registerExportModal" @success="handleExport" :showExportSelect="true" />
   </PageWrapper>
 </template>
 <script lang="ts">
@@ -64,7 +64,7 @@
   import { router } from '/@/router';
   import dayjs from 'dayjs';
   import { ASSET_FIELDS } from '/@/views/portal/config/attributes';
-  import { ExpExcelModal, jsonToSheetXlsx } from '/@/components/Excel';
+  import { ExpExcelModal, aoaToSheetXlsx } from '/@/components/Excel';
   import { getCache, setCache } from '/@/utils/tdiot/cache';
   import { useModal } from '/@/components/Modal';
   import {
@@ -109,7 +109,7 @@
     '改建年份',
     '隐患区域地形地貌名称',
     '设备厂商',
-    '建设项目',
+    '项目',
   ];
 
   const tableColumns: BasicColumn[] = buildColumns();
@@ -134,7 +134,7 @@
     ],
   };
 
-  const [registerTable, { reload, getSelectRows, getColumns, getDataSource }] = useTable({
+  const [registerTable, { reload, getSelectRows, getColumns, getDataSource, getPagination, getForm }] = useTable({
     rowKey: (record) => record.entityId?.id,
     api: (arg) => fetchAssets(arg),
     columns: tableColumns,
@@ -222,7 +222,7 @@
       }
       // Adjust widths for specific columns
       if (['省级编号', '监测点编号', 'construction', 'geo'].includes(key)) col.width = 120;
-      if (['监测点名称', '建设项目', 'relateYL'].includes(key)) col.width = 180;
+      if (['监测点名称', '项目', 'relateYL'].includes(key)) col.width = 180;
 
       cols.push(col);
     });
@@ -382,17 +382,40 @@
   function openExport() {
     openExportModal(true, {});
   }
-  function handleExport({ filename, bookType }: { filename: string; bookType: string }) {
-    const rows = getSelectRows() || [];
-    const data = rows.length ? rows : getDataSource();
+  async function handleExport({
+    filename,
+    bookType,
+    exportScope,
+  }: {
+    filename: string;
+    bookType: string;
+    exportScope?: 'current' | 'all';
+  }) {
+    let data: any[] = [];
+    if (exportScope === 'all') {
+      const pagination = getPagination() as any;
+      const total = pagination?.total || 0;
+      const formValues = getForm().getFieldsValue();
+      const res = await fetchAssets({
+        page: 0,
+        pageSize: total || 10000,
+        ...formValues,
+      });
+      data = res.data;
+    } else {
+      const rows = getSelectRows() || [];
+      data = rows.length ? rows : getDataSource();
+    }
+
     const columns = getColumns({ ignoreIndex: true });
-    const header = columns.map((c) => c.title as string);
-    const keys = columns.map((c) => (c.dataIndex as string) || '');
+    // Filter out columns without dataIndex or that are action columns
+    const validColumns = columns.filter((c) => (c.dataIndex || c.key) && c.key !== 'action');
+
+    const header = validColumns.map((c) => c.title as string);
+    const keys = validColumns.map((c) => (c.dataIndex || c.key) as string);
     const arr = data.map((r: any) => {
-      const o: any = {};
-      keys.forEach((k, i) => (o[header[i]] = r[k]));
-      return o;
+      return keys.map((k) => r[k]);
     });
-    jsonToSheetXlsx({ data: arr, header, filename, write2excelOpts: { bookType } as any });
+    aoaToSheetXlsx({ data: arr, header, filename, write2excelOpts: { bookType } as any });
   }
 </script>
