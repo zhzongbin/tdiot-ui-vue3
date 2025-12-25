@@ -546,15 +546,11 @@
         });
         tdtMap.addOverLay(marker);
       });
-    if (points.length === 1) {
-      tdtMap.centerAndZoom(points[0], 18);
-    } else if (points.length > 1) {
-      tdtMap.setViewport(points);
-      // Zoom out slightly if needed, or avoid too close zoom
-      if (tdtMap.getZoom && tdtMap.getZoom() > 18) {
-        tdtMap.setZoom(18);
-      }
+
+    if (points.length === 0) {
+      // Optional: if no devices, maybe center on asset (already done in initTianditu)
     }
+
     (window as any).__openDeviceDetail = (id: string) => router.push(`/portal/devices/${id}`);
   }
 
