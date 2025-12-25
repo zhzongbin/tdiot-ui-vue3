@@ -7,27 +7,45 @@
       <a-card title="属性详情" class="shadow-sm">
         <a-table
           :columns="attributeColumns"
-          :dataSource="attributeList"
+          :dataSource="displayedAttributes"
           :pagination="false"
           size="small"
           rowKey="key"
           bordered
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'value'">
+            <template v-if="column.key === 'value1'">
               <span class="font-medium text-sm">
-                <template v-if="['经度', '纬度'].includes(record.alias)">
+                <template v-if="['经度', '纬度'].includes(record.alias1)">
                   <a @click="openMap(detail['经度'], detail['纬度'])" class="text-blue-600 hover:underline">
-                    {{ record.value }}
+                    {{ record.value1 }}
                   </a>
                 </template>
                 <template v-else>
-                  {{ record.value }}
+                  {{ record.value1 }}
+                </template>
+              </span>
+            </template>
+            <template v-if="column.key === 'value2'">
+              <span class="font-medium text-sm">
+                <template v-if="['经度', '纬度'].includes(record.alias2)">
+                  <a @click="openMap(detail['经度'], detail['纬度'])" class="text-blue-600 hover:underline">
+                    {{ record.value2 }}
+                  </a>
+                </template>
+                <template v-else>
+                  {{ record.value2 }}
                 </template>
               </span>
             </template>
           </template>
         </a-table>
+        <div class="flex justify-center mt-2">
+          <a-button type="link" size="small" @click="toggleExpand">
+            <span v-if="!isExpanded"> 展开更多 <Icon icon="ant-design:down-outlined" /> </span>
+            <span v-else> 收起 <Icon icon="ant-design:up-outlined" /> </span>
+          </a-button>
+        </div>
       </a-card>
 
       <a-card title="地灾点位置与设备分布">
@@ -221,28 +239,46 @@
   }
 
   const attributeColumns = [
-    {
-      title: '属性名',
-      dataIndex: 'alias',
-      key: 'alias',
-      width: 200,
-    },
-    {
-      title: '属性值',
-      dataIndex: 'value',
-      key: 'value',
-    },
+    { title: '属性名', dataIndex: 'alias1', key: 'alias1', width: '15%' },
+    { title: '属性值', dataIndex: 'value1', key: 'value1', width: '35%' },
+    { title: '属性名', dataIndex: 'alias2', key: 'alias2', width: '15%' },
+    { title: '属性值', dataIndex: 'value2', key: 'value2', width: '35%' },
   ];
 
   const attributeList = computed(() => {
-    return ASSET_FIELDS.order.map((key) => {
+    const list = ASSET_FIELDS.order.map((key) => {
       return {
         key,
         alias: alias(key),
         value: displayValue(detail.value[key]),
       };
     });
+    const pairs: any[] = [];
+    for (let i = 0; i < list.length; i += 2) {
+      pairs.push({
+        key: 'row_' + i,
+        alias1: list[i].alias,
+        value1: list[i].value,
+        key1: list[i].key,
+        alias2: list[i + 1]?.alias || '',
+        value2: list[i + 1]?.value || '',
+        key2: list[i + 1]?.key || '',
+      });
+    }
+    return pairs;
   });
+
+  const isExpanded = ref(false);
+  const displayedAttributes = computed(() => {
+    if (isExpanded.value) {
+      return attributeList.value;
+    }
+    return attributeList.value.slice(0, 3);
+  });
+
+  function toggleExpand() {
+    isExpanded.value = !isExpanded.value;
+  }
 
   function goRelatedDevices() {
     const id = detail.value?.entityId?.id;
