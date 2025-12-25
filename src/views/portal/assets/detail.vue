@@ -332,6 +332,8 @@
       'DeviceName',
       'Longitude',
       'Latitude',
+      '经度',
+      '纬度',
       'DeviceType',
       '监测类型',
     ];
@@ -374,6 +376,8 @@
       'DeviceName',
       'Longitude',
       'Latitude',
+      '经度',
+      '纬度',
       'DeviceType',
       '监测类型',
     ];
@@ -423,8 +427,8 @@
       DeviceName: get('SERVER_ATTRIBUTE', 'DeviceName'),
       DeviceType: get('SERVER_ATTRIBUTE', 'DeviceType'),
       监测类型: get('SERVER_ATTRIBUTE', '监测类型'),
-      Longitude: get('SERVER_ATTRIBUTE', 'Longitude'),
-      Latitude: get('SERVER_ATTRIBUTE', 'Latitude'),
+      Longitude: get('SERVER_ATTRIBUTE', 'Longitude') || get('SERVER_ATTRIBUTE', '经度'),
+      Latitude: get('SERVER_ATTRIBUTE', 'Latitude') || get('SERVER_ATTRIBUTE', '纬度'),
     };
     return entity;
   }
@@ -474,7 +478,7 @@
       .map((row: any) => ({
         entityId: row.entityId,
         name: row.name || row.DeviceName,
-        typename: row.DeviceType || row['设备名称'] || '',
+        typename: row.DeviceType || row['监测类型'] || '',
         lon: Number(row.Longitude),
         lat: Number(row.Latitude),
       }))

@@ -38,7 +38,6 @@
   import { BasicTable, useTable, BasicColumn } from '/@/components/Table';
   import { Icon } from '/@/components/Icon';
   import { findEntityDataByQuery } from '/@/api/tb/entityQuery';
-  import { getDeviceCredentialsByDeviceId } from '/@/api/tb/device';
   import { EntityType } from '/@/enums/entityTypeEnum';
   import { router } from '/@/router';
   import dayjs from 'dayjs';
@@ -292,23 +291,6 @@
     if (!cachedPage) setCache('portal_devices', cacheKey, page, 24 * 60 * 60 * 1000);
     const mapped = page.data.map((row: any) => mapEntityRow(row));
 
-    // Fetch credentials for devices (Optimized: Concurrent fetch)
-    // Note: This API call is per-device. For large pages (Export All), this might be slow.
-    // We assume standard usage or manageable export sizes.
-    // We swallow errors to prevent breaking the list if one device fails.
-    if (mapped.length > 0) {
-      await Promise.all(
-        mapped.map(async (item: any) => {
-          try {
-            const creds = await getDeviceCredentialsByDeviceId(item.entityId.id);
-            item.credentialsValue = creds.credentialsValue;
-          } catch (e) {
-            // ignore error or no permission
-          }
-        }),
-      );
-    }
-
     return { ...page, data: mapped };
   }
 
@@ -419,15 +401,24 @@
       const pagination = getPagination() as any;
       const total = pagination?.total || 0;
       const formValues = getForm().getFieldsValue();
-      const res = await fetchDevices({
-        page: 0,
-        pageSize: total || 10000,
-        ...formValues,
-      });
-      data = res.data;
+
+      // Batch fetching to prevent database timeout (N+1 problem)
+      const BATCH_SIZE = 500;
+      const pages = Math.ceil(total / BATCH_SIZE);
+
+      for (let p = 0; p < pages; p++) {
+        const res = await fetchDevices({
+          page: p,
+          pageSize: BATCH_SIZE,
+          ...formValues,
+        });
+        const batchData = res.data;
+        data.push(...batchData);
+      }
     } else {
       const rows = getSelectRows() || [];
-      data = rows.length ? rows : getDataSource();
+      const list = rows.length ? rows : getDataSource();
+      data = list;
     }
 
     const columns = getColumns({ ignoreIndex: true });
