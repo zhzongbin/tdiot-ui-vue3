@@ -4,44 +4,32 @@
       <div class="flex gap-2">
         <a-button type="primary" @click="goRelatedDevices">查看关联设备列表</a-button>
       </div>
-      <a-card :title="t('routes.portal.assets')">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('basic')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
+      <a-card title="属性详情" class="shadow-sm">
+        <a-table
+          :columns="attributeColumns"
+          :dataSource="attributeList"
+          :pagination="false"
+          size="small"
+          rowKey="key"
+          bordered
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'value'">
+              <span class="font-medium text-sm">
+                <template v-if="['经度', '纬度'].includes(record.alias)">
+                  <a @click="openMap(detail['经度'], detail['纬度'])" class="text-blue-600 hover:underline">
+                    {{ record.value }}
+                  </a>
+                </template>
+                <template v-else>
+                  {{ record.value }}
+                </template>
+              </span>
+            </template>
+          </template>
+        </a-table>
       </a-card>
-      <a-card :title="ASSET_FIELDS.groups.site.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('site')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="ASSET_FIELDS.groups.hazard.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('hazard')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="ASSET_FIELDS.groups.construction.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('construction')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="ASSET_FIELDS.groups.geo.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item :label="alias('经度')">
-            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['经度']) }}</a>
-          </a-descriptions-item>
-          <a-descriptions-item :label="alias('纬度')">
-            <a @click="openMap(detail['经度'], detail['纬度'])">{{ displayValue(detail['纬度']) }}</a>
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
+
       <a-card title="地灾点位置与设备分布">
         <div class="relative" style="height: 420px; width: 100%">
           <div id="asset-tdt-map" style="height: 100%; width: 100%"></div>
@@ -73,20 +61,6 @@
             {{ mouseCoordText }}
           </div>
         </div>
-      </a-card>
-      <a-card :title="ASSET_FIELDS.groups.stats.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('stats')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
-      <a-card :title="ASSET_FIELDS.groups.extra.title">
-        <a-descriptions :column="2" bordered>
-          <a-descriptions-item v-for="key in groupOrder('extra')" :key="key" :label="alias(key)">
-            {{ displayValue(detail[key]) }}
-          </a-descriptions-item>
-        </a-descriptions>
       </a-card>
 
       <a-card title="关联设备">
@@ -136,7 +110,7 @@
   };
 </script>
 <script lang="ts" setup>
-  import { ref, onMounted, watchEffect, h } from 'vue';
+  import { ref, onMounted, watchEffect, h, computed } from 'vue';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { PageWrapper } from '/@/components/Page';
   import { findEntityDataByQuery, findAlarmDataByQuery } from '/@/api/tb/entityQuery';
@@ -149,7 +123,7 @@
   import { Icon } from '/@/components/Icon';
   import { jsonToSheetXlsx } from '/@/components/Excel/src/Export2Excel';
   import { useTianditu } from '/@/hooks/web/useTianditu';
-  import { Radio, Tag } from 'ant-design-vue';
+  import { Radio, Tag, Table, Card } from 'ant-design-vue';
   import { getAlarmInfoByEntity } from '/@/api/tb/alarm';
   import { AlarmSeverity } from '/@/enums/alarmEnum';
   import { useDrawer } from '/@/components/Drawer';
@@ -164,6 +138,9 @@
   const mouseCoordText = ref('');
   const tdtError = ref(false);
   const baseType = ref<'sat' | 'hybrid' | 'vec'>('sat');
+
+  const ATable = Table;
+  const ACard = Card;
 
   onMounted(async () => {
     const assetId = router.currentRoute.value.params.assetId as string;
@@ -242,6 +219,30 @@
     if (!lon || !lat) return;
     router.push({ path: '/portal/map', query: { center: `${lon},${lat}`, entityType: 'ASSET' } });
   }
+
+  const attributeColumns = [
+    {
+      title: '属性名',
+      dataIndex: 'alias',
+      key: 'alias',
+      width: 200,
+    },
+    {
+      title: '属性值',
+      dataIndex: 'value',
+      key: 'value',
+    },
+  ];
+
+  const attributeList = computed(() => {
+    return ASSET_FIELDS.order.map((key) => {
+      return {
+        key,
+        alias: alias(key),
+        value: displayValue(detail.value[key]),
+      };
+    });
+  });
 
   function goRelatedDevices() {
     const id = detail.value?.entityId?.id;
