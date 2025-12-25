@@ -157,6 +157,7 @@
 
   const { t } = useI18n();
   const detail = ref<any>({});
+  const allDevices = ref<any[]>([]);
   const { setTitle } = useTabs();
   const { success: tdtReady, error: tdtErrorRef, T } = useTianditu(import.meta.env.VITE_TIANDITU_TK || '');
   let tdtMap: any = undefined;
@@ -192,9 +193,9 @@
     }
 
     await reloadRelated();
+    await fetchAllRelatedDevices();
 
-    if (tdtReady.value) {
-      initTianditu();
+    if (tdtMap) {
       renderDeviceMarkers();
     }
   });
@@ -328,6 +329,52 @@
     return { ...page, data: mapped };
   }
 
+  async function fetchAllRelatedDevices() {
+    const assetId = router.currentRoute.value.params.assetId as string;
+    const serverAttrKeys = [
+      'DeviceNo',
+      'MQTT_CLIENT_ID',
+      'DeviceName',
+      'Longitude',
+      'Latitude',
+      'DeviceType',
+      '监测类型',
+    ];
+    const query = {
+      entityFilter: {
+        type: 'relationsQuery',
+        rootEntity: { id: assetId, entityType: EntityType.ASSET },
+        direction: 'FROM',
+        maxLevel: 1,
+        fetchLastLevelOnly: true,
+        filters: [{ relationType: 'Contains', entityTypes: [EntityType.DEVICE], negate: false }],
+      },
+      entityFields: [
+        { type: 'ENTITY_FIELD', key: 'name' },
+        { type: 'ENTITY_FIELD', key: 'type' },
+        { type: 'ENTITY_FIELD', key: 'label' },
+        { type: 'ENTITY_FIELD', key: 'createdTime' },
+      ],
+      pageLink: {
+        page: 0,
+        pageSize: 1000,
+        textSearch: null,
+        sortOrder: {
+          direction: 'DESC',
+          key: { type: 'ENTITY_FIELD', key: 'createdTime' },
+        },
+      },
+      latestValues: [...serverAttrKeys.map((k) => ({ type: 'SERVER_ATTRIBUTE', key: k }))],
+    };
+    try {
+      const page = await findEntityDataByQuery(query);
+      allDevices.value = page.data.map((row: any) => mapDeviceRow(row));
+    } catch (e) {
+      console.error(e);
+      allDevices.value = [];
+    }
+  }
+
   function mapDeviceRow(row: any) {
     const latest = row.latest || {};
     const get = (group: string, key: string) => latest?.[group]?.[key]?.value;
@@ -384,7 +431,7 @@
   function renderDeviceMarkers() {
     if (!tdtMap || !T.value) return;
     tdtMap.clearOverLays();
-    const list = (getDataSource() || []) as Array<any>;
+    const list = (allDevices.value || []) as Array<any>;
     const points: any[] = [];
     list
       .map((row: any) => ({
@@ -503,7 +550,8 @@
       tdtMap.centerAndZoom(points[0], 18);
     } else if (points.length > 1) {
       tdtMap.setViewport(points);
-      if (tdtMap.getZoom && tdtMap.getZoom() < 18) {
+      // Zoom out slightly if needed, or avoid too close zoom
+      if (tdtMap.getZoom && tdtMap.getZoom() > 18) {
         tdtMap.setZoom(18);
       }
     }
