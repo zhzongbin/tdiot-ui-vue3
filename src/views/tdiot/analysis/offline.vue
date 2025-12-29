@@ -288,6 +288,17 @@
   const fetchReport = async () => {
     loading.value = true;
     try {
+      // 1. 尝试调用后端接口触发最新计算
+      // 默认后端地址 localhost:3000，生产环境建议通过 Nginx 转发 /api/report -> localhost:3000
+      try {
+        await axios.post('http://localhost:3000/refresh-report');
+        // 等待文件系统写入
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      } catch (backendError) {
+        console.warn('后端服务调用失败 (但这不影响查看旧数据):', backendError);
+      }
+
+      // 2. 读取 JSON 报告
       // 尝试直接获取 public 下的数据文件
       // 在开发环境，BaseURL 通常是 /；在生产环境，可能是 /vue/
       // 为了兼容，我们先尝试不带前缀的绝对路径（适用于开发环境）
