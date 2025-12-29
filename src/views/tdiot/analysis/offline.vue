@@ -6,6 +6,10 @@
         <span v-if="reportData?.generatedAt" class="text-gray-500 text-sm">
           {{ t('tdiot.analysis.lastUpdateTime') }}: {{ new Date(reportData.generatedAt).toLocaleString() }}
         </span>
+        <a-button @click="exportToExcel">
+          <template #icon><DownloadOutlined /></template>
+          导出 Excel
+        </a-button>
         <a-button type="primary" @click="fetchReport" :loading="loading">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -130,10 +134,47 @@
     Button as AButton,
     Badge as ABadge,
   } from 'ant-design-vue';
+  import { DownloadOutlined } from '@ant-design/icons-vue';
   import axios from 'axios';
   import { useI18n } from '/@/hooks/web/useI18n';
+  import { jsonToSheetXlsx } from '/@/components/Excel';
 
   const { t } = useI18n();
+  // ... 其他接口定义 ...
+
+  // 导出 Excel 功能
+  const exportToExcel = () => {
+    if (!reportData.value) return;
+
+    const data: any[] = [];
+
+    // 扁平化数据：每一行代表一个离线的设备，包含项目信息
+    Object.entries(reportData.value.projects).forEach(([projectName, projectData]) => {
+      // 获取该项目的所有设备（目前脚本返回的是所有设备，但在表格展开中我们只展示了离线设备）
+      // 需求可能是导出所有数据，或者只导出离线数据。
+      // 这里我们默认导出所有设备的状态，方便用户做透视表
+
+      projectData.devices.forEach((device) => {
+        data.push({
+          项目名称: projectName,
+          设备名称: device.name,
+          设备标签: device.label,
+          当前状态: device.status,
+          最后活跃时间: device.lastActivityTime,
+          '离线时长(小时)': device.offlineHours === '∞' ? '从未上线' : device.offlineHours,
+          设备ID: device.id,
+        });
+      });
+    });
+
+    // 按项目名排序
+    data.sort((a, b) => a['项目名称'].localeCompare(b['项目名称']));
+
+    jsonToSheetXlsx({
+      data,
+      filename: `设备离线统计报告_${new Date().toISOString().split('T')[0]}.xlsx`,
+    });
+  };
 
   interface DeviceStatus {
     name: string;
@@ -167,9 +208,21 @@
   // 表格列定义
   const columns = [
     { title: '项目名称', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-    { title: '总设备', dataIndex: 'total', key: 'total', align: 'center', sorter: (a, b) => a.total - b.total },
-    { title: '在线', dataIndex: 'online', key: 'online', align: 'center' },
-    { title: '离线', dataIndex: 'offline', key: 'offline', align: 'center', sorter: (a, b) => a.offline - b.offline },
+    {
+      title: '总设备',
+      dataIndex: 'total',
+      key: 'total',
+      align: 'center' as const,
+      sorter: (a, b) => a.total - b.total,
+    },
+    { title: '在线', dataIndex: 'online', key: 'online', align: 'center' as const },
+    {
+      title: '离线',
+      dataIndex: 'offline',
+      key: 'offline',
+      align: 'center' as const,
+      sorter: (a, b) => a.offline - b.offline,
+    },
     { title: '在线率', dataIndex: 'onlineRate', key: 'onlineRate', width: 200 },
   ];
 
