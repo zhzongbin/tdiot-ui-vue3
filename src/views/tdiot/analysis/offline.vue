@@ -6,6 +6,7 @@
         <span v-if="reportData?.generatedAt" class="text-gray-500 text-sm">
           {{ t('tdiot.analysis.lastUpdateTime') }}: {{ new Date(reportData.generatedAt).toLocaleString() }}
         </span>
+        <a-switch v-model:checked="showAllDevices" checked-children="显示全部" un-checked-children="只看离线" />
         <a-button @click="exportToExcel">
           <template #icon><DownloadOutlined /></template>
           导出 Excel
@@ -85,20 +86,31 @@
         <!-- 展开行：展示该项目下的离线设备详情 -->
         <template #expandedRowRender="{ record }">
           <div class="p-4 bg-gray-50 rounded">
-            <div class="font-bold mb-2 flex items-center gap-2">
-              <WarningOutlined class="text-red-500" />
-              <span>{{ record.name }} - 离线设备明细</span>
+            <div class="font-bold mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <WarningOutlined class="text-red-500" />
+                <span>{{ record.name }} - 离线设备明细</span>
+              </div>
+              <a-button
+                size="small"
+                type="dashed"
+                @click="exportProjectOffline(record)"
+                :disabled="record.offline === 0"
+              >
+                <template #icon><DownloadOutlined /></template>
+                导出该项目离线设备
+              </a-button>
             </div>
             <a-table
               :columns="innerColumns"
-              :data-source="record.offlineDevices"
+              :data-source="record.displayDevices"
               size="small"
-              :pagination="{ pageSize: 5 }"
+              :pagination="{ pageSize: 10 }"
               row-key="id"
             >
-              <template #bodyCell="{ column, text }">
+              <template #bodyCell="{ column, record: device }">
                 <template v-if="column.dataIndex === 'status'">
-                  <a-badge status="error" text="离线" />
+                  <a-badge :status="device.status === '在线' ? 'success' : 'error'" :text="device.status" />
                 </template>
               </template>
             </a-table>
@@ -133,6 +145,7 @@
     Tag as ATag,
     Button as AButton,
     Badge as ABadge,
+    Switch as ASwitch,
   } from 'ant-design-vue';
   import { DownloadOutlined } from '@ant-design/icons-vue';
   import axios from 'axios';
@@ -176,6 +189,28 @@
     });
   };
 
+  // 导出单个项目的离线设备
+  const exportProjectOffline = (record: any) => {
+    const offlineOnly = record.allDevices.filter((d: any) => d.status === '离线');
+
+    if (!offlineOnly || offlineOnly.length === 0) return;
+
+    const data = offlineOnly.map((device: any) => ({
+      项目名称: record.name,
+      设备名称: device.name,
+      设备标签: device.label,
+      当前状态: device.status,
+      最后活跃时间: device.lastActivityTime,
+      '离线时长(小时)': device.offlineHours,
+      设备ID: device.id,
+    }));
+
+    jsonToSheetXlsx({
+      data,
+      filename: `${record.name}_离线设备_${new Date().toISOString().split('T')[0]}.xlsx`,
+    });
+  };
+
   interface DeviceStatus {
     name: string;
     label: string;
@@ -203,6 +238,7 @@
   }
 
   const loading = ref(false);
+  const showAllDevices = ref(false); // 控制是否显示所有设备
   const reportData = ref<ReportData | null>(null);
 
   // 表格列定义
@@ -243,7 +279,9 @@
       online: data.online,
       offline: data.offline,
       onlineRate: parseFloat(((data.online / data.total) * 100).toFixed(1)),
-      offlineDevices: data.devices.filter((d) => d.status === '离线'),
+      // 根据开关过滤设备列表
+      displayDevices: showAllDevices.value ? data.devices : data.devices.filter((d) => d.status === '离线'),
+      allDevices: data.devices, // 保留完整数据供导出
     }));
   });
 
