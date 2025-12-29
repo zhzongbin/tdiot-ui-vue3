@@ -88,8 +88,7 @@
                   @change="handleChartFilterChange"
                   :maxTagCount="3"
                   :options="filteredOptions"
-                >
-                </a-select>
+                />
               </div>
             </div>
             <div ref="chartRef" style="width: 100%; height: 400px"></div>
