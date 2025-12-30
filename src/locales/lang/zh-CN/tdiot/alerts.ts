@@ -1,0 +1,32 @@
+export default {
+  title: '告警列表',
+  filter: {
+    status: '告警状态',
+    all: '全部',
+    active: '未清除',
+    cleared: '已清除',
+    ack: '已确认',
+  },
+  columns: {
+    deviceName: '发起设备',
+    monitoringPoint: '监测点名称',
+    deviceNo: '设备编号',
+    severity: '告警等级',
+    status: '状态',
+    time: '发生时间',
+  },
+  detail: {
+    details: '详情',
+    ack: '确认告警',
+    clear: '清除告警',
+    returnToDevice: '返回列表',
+    ackSuccess: '确认成功',
+    clearSuccess: '清除成功',
+    name: '告警名称',
+    severity: '严重程度',
+    status: '状态',
+    type: '类型',
+    startTime: '开始时间',
+    endTime: '结束时间',
+  },
+};

@@ -1,0 +1,32 @@
+export default {
+  title: 'Alarm List',
+  filter: {
+    status: 'Alarm Status',
+    all: 'All',
+    active: 'Active',
+    cleared: 'Cleared',
+    ack: 'Acknowledged',
+  },
+  columns: {
+    deviceName: 'Device Name',
+    monitoringPoint: 'Monitoring Point',
+    deviceNo: 'Device No',
+    severity: 'Severity',
+    status: 'Status',
+    time: 'Time',
+  },
+  detail: {
+    details: 'Details',
+    ack: 'Acknowledge',
+    clear: 'Clear',
+    returnToDevice: 'Return',
+    ackSuccess: 'Acknowledged successfully',
+    clearSuccess: 'Cleared successfully',
+    name: 'Name',
+    severity: 'Severity',
+    status: 'Status',
+    type: 'Type',
+    startTime: 'Start Time',
+    endTime: 'End Time',
+  },
+};

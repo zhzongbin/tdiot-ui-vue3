@@ -27,4 +27,28 @@ const tdiotAnalysis: AppRouteModule = {
   ],
 };
 
-export default [tdiotAnalysis];
+const tdiotAlerts: AppRouteModule = {
+  path: '/tdiot-alerts',
+  name: 'TdiotAlerts',
+  component: LAYOUT,
+  meta: {
+    title: t('tdiot.alerts.title'),
+    icon: 'i-ant-design:alert-outlined',
+    orderNo: 11,
+    single: true,
+    authority: [Authority.TENANT_ADMIN],
+  },
+  children: [
+    {
+      path: '/tdiot/alerts',
+      name: 'TdiotAlertsList',
+      component: () => import('/@/views/tdiot/alerts/index.vue'),
+      meta: {
+        title: t('tdiot.alerts.title'),
+        icon: 'i-ant-design:alert-outlined',
+      },
+    },
+  ],
+};
+
+export default [tdiotAnalysis, tdiotAlerts];
