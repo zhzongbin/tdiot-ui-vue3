@@ -21,7 +21,7 @@ yarn-error.log*
 pnpm-debug.log*
 vite.config.ts.timestamp*
 public/data
-
+*.log
 # IDE files
 .idea
 *.suo

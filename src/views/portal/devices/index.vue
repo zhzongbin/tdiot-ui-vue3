@@ -120,7 +120,7 @@
       clickToRowSelect: false,
       defSort: { sortProperty: 'createdTime', sortOrder: 'DESC' },
       formConfig: {
-        layout: 'inline',
+        labelWidth: 80,
         showResetButton: true,
         showSubmitButton: true,
         baseColProps: { lg: 6, md: 8, sm: 12 },
@@ -140,22 +140,46 @@
             },
           },
           {
-            label: '类型',
+            label: '设备类型',
             field: 'type',
             component: 'Input',
-            componentProps: { allowClear: true, placeholder: '设备类型' },
+            componentProps: { allowClear: true, placeholder: '请输入设备类型' },
           },
           {
-            label: 'DeviceType',
-            field: 'deviceType',
+            label: '市',
+            field: 'city',
             component: 'Input',
-            componentProps: { allowClear: true, placeholder: '设备厂商类型' },
+            componentProps: { allowClear: true, placeholder: '请输入市' },
           },
           {
-            label: '所属资产',
-            field: 'assetId',
+            label: '县(市、区)',
+            field: 'county',
             component: 'Input',
-            componentProps: { allowClear: true, placeholder: '资产ID（支持从资产详情跳转）' },
+            componentProps: { allowClear: true, placeholder: '请输入县(市、区)' },
+          },
+          {
+            label: '建设项目',
+            field: 'project',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '请输入建设项目' },
+          },
+          {
+            label: '建设级别',
+            field: 'level',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '请输入建设级别' },
+          },
+          {
+            label: '所有者',
+            field: 'owner',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '请输入所有者' },
+          },
+          {
+            label: '制造商',
+            field: 'manufacturer',
+            component: 'Input',
+            componentProps: { allowClear: true, placeholder: '请输入制造商' },
           },
           {
             label: '创建时间',
@@ -345,6 +369,78 @@
           type: FilterPredicateType.STRING,
           operation: StringOperation.EQUAL,
           value: { defaultValue: param.deviceType },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.city) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'city' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.EQUAL,
+          value: { defaultValue: param.city },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.county) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'county' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.EQUAL,
+          value: { defaultValue: param.county },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.project) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'project' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.CONTAINS,
+          value: { defaultValue: param.project },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.level) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: '建设级别' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.EQUAL,
+          value: { defaultValue: param.level },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.owner) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'ower' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.CONTAINS,
+          value: { defaultValue: param.owner },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.manufacturer) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: 'manufacturer' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.CONTAINS,
+          value: { defaultValue: param.manufacturer },
           ignoreCase: true,
         },
       });

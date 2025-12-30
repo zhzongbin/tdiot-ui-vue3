@@ -146,7 +146,7 @@
     clickToRowSelect: false,
     defSort: { sortProperty: 'createdTime', sortOrder: 'DESC' },
     formConfig: {
-      layout: 'inline',
+      labelWidth: 90,
       showResetButton: true,
       showSubmitButton: true,
       baseColProps: { lg: 6, md: 8, sm: 12 },
@@ -168,6 +168,24 @@
           field: 'county',
           component: 'Input',
           componentProps: { allowClear: true, placeholder: '区县' },
+        },
+        {
+          label: '建设项目',
+          field: 'project',
+          component: 'Input',
+          componentProps: { allowClear: true, placeholder: '请输入建设项目' },
+        },
+        {
+          label: '建设级别',
+          field: 'level',
+          component: 'Input',
+          componentProps: { allowClear: true, placeholder: '请输入建设级别' },
+        },
+        {
+          label: '建设单位',
+          field: 'unit',
+          component: 'Input',
+          componentProps: { allowClear: true, placeholder: '请输入建设单位' },
         },
         {
           label: '乡（镇、街道）',
@@ -340,6 +358,42 @@
           type: FilterPredicateType.STRING,
           operation: StringOperation.EQUAL,
           value: { defaultValue: param.town },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.project) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: '项目' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.CONTAINS,
+          value: { defaultValue: param.project },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.level) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: '建设级别' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.EQUAL,
+          value: { defaultValue: param.level },
+          ignoreCase: true,
+        },
+      });
+    }
+    if (param?.unit) {
+      filters.push({
+        key: { type: EntityKeyType.SERVER_ATTRIBUTE, key: '建设单位' },
+        valueType: EntityKeyValueType.STRING,
+        predicate: {
+          type: FilterPredicateType.STRING,
+          operation: StringOperation.CONTAINS,
+          value: { defaultValue: param.unit },
           ignoreCase: true,
         },
       });
