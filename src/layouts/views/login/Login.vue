@@ -1,13 +1,13 @@
 <template>
   <AuthenticationLogin
-    :sub-title="'请输入 Thingsboard 账户信息开始进入系统'"
+    :sub-title="'请输入账户信息开始进入系统'"
     :form-schema="formSchema"
     :loading="loading"
     @submit="handleLogin"
   >
-    <template #third-party-login>
+    <!-- <template #third-party-login>
       <TechSupport />
-    </template>
+    </template> -->
   </AuthenticationLogin>
 </template>
 <script lang="ts" setup>

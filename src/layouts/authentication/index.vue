@@ -15,8 +15,8 @@
   <AuthPageLayout
     :app-name="appName"
     :logo="logo"
-    :page-title="t('Thingsboard Iot Platform')"
-    :page-description="t('基于Vue3 的ThingsBoard 前端应用（ThingsBoard v4.2.0）')"
+    :page-title="t('地质灾害监测预警平台')"
+    :page-description="t('福建省地质工程勘察院')"
   >
     <!-- 自定义工具栏 -->
     <!-- <template #toolbar></template> -->
