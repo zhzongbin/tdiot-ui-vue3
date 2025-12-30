@@ -1,4 +1,4 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Post, Headers } from '@nestjs/common';
 import { AppService } from './app.service';
 import { OfflineReportService } from './tasks/offline-report.service';
 
@@ -15,7 +15,9 @@ export class AppController {
   }
 
   @Post('refresh-report')
-  async refreshReport() {
-    return await this.offlineReportService.generateReport();
+  async refreshReport(@Headers('X-Authorization') authHeader: string) {
+    // 提取 Bearer Token (如果有)
+    const token = authHeader?.replace('Bearer ', '');
+    return await this.offlineReportService.generateReport(token);
   }
 }

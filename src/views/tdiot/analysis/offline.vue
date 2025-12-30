@@ -151,8 +151,10 @@
   import axios from 'axios';
   import { useI18n } from '/@/hooks/web/useI18n';
   import { jsonToSheetXlsx } from '/@/components/Excel';
+  import { useUserStore } from '/@/store/modules/user';
 
   const { t } = useI18n();
+  const userStore = useUserStore();
   // ... 其他接口定义 ...
 
   // 导出 Excel 功能
@@ -291,7 +293,11 @@
       // 1. 尝试调用后端接口触发最新计算
       // 默认后端地址 localhost:3000，生产环境建议通过 Nginx 转发 /api/report -> localhost:3000
       try {
-        await axios.post('http://localhost:3000/refresh-report');
+        await axios.post('http://localhost:3000/refresh-report', {}, {
+          headers: {
+            'X-Authorization': `Bearer ${userStore.getToken}`,
+          },
+        });
         // 等待文件系统写入
         await new Promise((resolve) => setTimeout(resolve, 800));
       } catch (backendError) {

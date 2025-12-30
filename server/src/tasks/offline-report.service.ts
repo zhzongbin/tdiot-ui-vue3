@@ -25,11 +25,16 @@ export class OfflineReportService {
     await this.generateReport();
   }
 
-  // 手动触发方法
-  async generateReport() {
+  // 手动触发方法 (支持传入外部 Token 以实现鉴权一致性)
+  async generateReport(providedToken?: string) {
     const startTime = Date.now();
     try {
-      await this.login();
+      if (providedToken) {
+        this.token = providedToken;
+        this.logger.log('使用前端传递的 Token 进行统计');
+      } else {
+        await this.login();
+      }
       const devices = await this.fetchDevicesByQuery();
       const report = await this.processDevices(devices);
 
