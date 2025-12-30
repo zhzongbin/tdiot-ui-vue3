@@ -25,20 +25,23 @@ cd server
 pnpm build
 cd ..
 
-echo "🚀 [4/5] 启动服务..."
-echo "正在后台启动 NestJS 后端 (Port 3000)..."
-# 使用 nohup 后台运行后端，日志输出到 backend.log
+echo "🚀 [4/5] 启动服务 (后台模式)..."
+
+# 启动 NestJS 后端
+echo "正在启动 NestJS 后端 (Port 3000)..."
 nohup node server/dist/main.js > backend.log 2>&1 &
 BACKEND_PID=$!
-echo "后端 PID: $BACKEND_PID"
+echo "后端已启动 (PID: $BACKEND_PID), 日志: backend.log"
 
+# 启动 Vue 前端
 echo "正在启动 Vue 前端 (开发模式)..."
-# 注意：前端开发服务器默认运行在前台
-npm run dev
+nohup npm run dev > frontend.log 2>&1 &
+FRONTEND_PID=$!
+echo "前端已启动 (PID: $FRONTEND_PID), 日志: frontend.log"
 
-# 退出时清理后台进程
-cleanup() {
-    echo "正在关闭后端服务 (PID: $BACKEND_PID)..."
-    kill $BACKEND_PID
-}
-trap cleanup EXIT
+echo "------------------------------------------------"
+echo "✅ 部署完成！"
+echo "你可以通过 'tail -f backend.log' 或 'tail -f frontend.log' 查看实时日志。"
+echo "即使退出 SSH，程序也会继续运行。"
+echo "若要手动停止，请执行: kill $BACKEND_PID $FRONTEND_PID"
+echo "------------------------------------------------"
