@@ -236,9 +236,10 @@ export class OfflineReportService {
         reportId: dateStr,
       }));
 
-      await this.prisma.deviceStatus.createMany({
-        data: batch,
-      });
+      // 使用事务包裹单个插入以增强兼容性（部分环境下 SQLite 的 createMany 可能存在 TS 报错）
+      await this.prisma.$transaction(
+        batch.map((data) => this.prisma.deviceStatus.create({ data })),
+      );
     }
 
     this.logger.log(`数据库记录已更新: ${dateStr}`);

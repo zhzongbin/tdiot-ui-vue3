@@ -14,10 +14,10 @@ cd ..
 
 echo "🗄️ [2/5] 初始化数据库 (Prisma)..."
 cd server
-# 生成 Prisma Client
-npx prisma generate
+# 生成 Prisma Client (使用 pnpm 以确保使用项目本地版本)
+pnpm prisma generate
 # 执行数据库迁移 (如果 dev.db 不存在会自动创建)
-npx prisma migrate deploy
+pnpm prisma migrate deploy
 cd ..
 
 echo "🏗️ [3/5] 构建 NestJS 后端..."
