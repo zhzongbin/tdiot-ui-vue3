@@ -206,7 +206,7 @@
          { type: 'ENTITY_FIELD', key: 'name' },
       ],
       latestValues: [
-        { type: 'SERVER_ATTRIBUTE', key: '监测点名称' },
+        { type: 'SERVER_ATTRIBUTE', key: 'StationName' },
         { type: 'SERVER_ATTRIBUTE', key: 'DeviceNo' }, 
         // Also trying Equipment Number just in case
         { type: 'SERVER_ATTRIBUTE', key: '设备编号' },
@@ -223,7 +223,7 @@
         status: item.latest?.ALARM_FIELD?.status?.value || item.status || '',
         severity: item.latest?.ALARM_FIELD?.severity?.value || item.severity || '',
         originatorName: item.latest?.ALARM_FIELD?.originatorName?.value || item.originatorName || '',
-        monitoringPoint: item.latest?.SERVER_ATTRIBUTE?.监测点名称?.value || '',
+        monitoringPoint: item.latest?.SERVER_ATTRIBUTE?.StationName?.value || '',
         deviceNo: item.latest?.SERVER_ATTRIBUTE?.DeviceNo?.value || item.latest?.SERVER_ATTRIBUTE?.设备编号?.value || '',
       }));
       return { items: items, total: res.totalElements };
