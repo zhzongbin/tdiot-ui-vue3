@@ -8,7 +8,7 @@ export default {
   details: '详情信息',
   ack: '确认告警',
   clear: '清除告警',
-  returnToDevice: '返回设备',
+  returnToDevice: '查看设备',
   ackSuccess: '确认成功',
   clearSuccess: '清除成功',
 };

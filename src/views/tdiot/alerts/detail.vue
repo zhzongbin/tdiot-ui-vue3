@@ -16,7 +16,7 @@
         <a-button type="primary" warning v-if="showClear" @click="handleClear" :loading="loading">
           {{ t('tdiot.alerts.detail.clear') }}
         </a-button>
-        <a-button @click="closeDrawer">{{ t('tdiot.alerts.detail.returnToDevice') }}</a-button>
+        <a-button @click="handleToDevice">{{ t('tdiot.alerts.detail.returnToDevice') }}</a-button>
       </div>
     </div>
     <BasicModal
@@ -31,6 +31,7 @@
 </template>
 <script lang="ts" setup>
   import { ref, computed, unref } from 'vue';
+  import { useRouter } from 'vue-router';
   import { BasicDrawer, useDrawerInner } from '/@/components/Drawer';
   import { Description, useDescription } from '/@/components/Description';
   import { CodeEditor, MODE } from '/@/components/CodeEditor';
@@ -42,6 +43,7 @@
   import dayjs from 'dayjs';
 
   const { t } = useI18n();
+  const router = useRouter();
   const { createMessage } = useMessage();
   const loading = ref(false);
   const alarmId = ref('');
@@ -167,6 +169,15 @@
       createMessage.error('上报失败');
     } finally {
       reportLoading.value = false;
+    }
+  }
+
+  function handleToDevice() {
+    const originator = currentAlarm.value.originator;
+    if (originator && originator.entityType === 'DEVICE') {
+      router.push({ name: 'PortalDeviceDetail', params: { deviceId: originator.id } });
+    } else {
+      createMessage.warning('该告警未关联设备或关联的实体不是设备');
     }
   }
 </script>
