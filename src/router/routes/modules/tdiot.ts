@@ -51,4 +51,28 @@ const tdiotAlerts: AppRouteModule = {
   ],
 };
 
-export default [tdiotAnalysis, tdiotAlerts];
+const tdiotImport: AppRouteModule = {
+  path: '/tdiot-import',
+  name: 'TdiotImport',
+  component: LAYOUT,
+  meta: {
+    title: t('tdiot.import.title'),
+    icon: 'i-ant-design:import-outlined',
+    orderNo: 12,
+    single: true,
+    authority: [Authority.TENANT_ADMIN],
+  },
+  children: [
+    {
+      path: '/tdiot/import',
+      name: 'TdiotImportPage',
+      component: () => import('/@/views/tdiot/import/index.vue'),
+      meta: {
+        title: t('tdiot.import.title'),
+        icon: 'i-ant-design:import-outlined',
+      },
+    },
+  ],
+};
+
+export default [tdiotAnalysis, tdiotAlerts, tdiotImport];
